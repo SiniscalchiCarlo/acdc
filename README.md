@@ -1,4 +1,4 @@
-# VENV and LIBRARIES
+# VENV and LIBRARIES aaaa
 We will use uv, it will handle packages and virtual enviroment:
 
 - A virtual enviroment is like a box were you install all your packager. This way is not installed in all your system. This is good because each project may need different packages versions or can have conficts with other packages installed in the system. This way you have an isolated and easy to replicate enviroment.
