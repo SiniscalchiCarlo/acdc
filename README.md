@@ -17,3 +17,35 @@ uv sync
 this will syncronize you packages with the one on the pyproject.toml
 5. To run code do: python path/to/pythonFile.py
 
+
+
+# PREPROCESSING
+
+1. SEMI-ISOTROPIC RESAMPLING
+ACDC is anisotropic, x and y can vary from from 1.3-1.7 but the slice thickness (z)
+is 5-8mm, if we would to an isotropic resamplic this would lead to a lot of artifacts. For this reason we only resample the xy to be 1.25x1.25
+
+2. INTESITY NORMALIZATION (z-score per volume) 
+Because MRI don't have an absolute scale and depends on the settings of the machine
+we need to do intensity normalization. 
+Also give faster convergence for the model because ....
+
+3. CROPPING
+....
+
+- 4. DATA AUGMENTATION
+
+TODO:
+- choose cropping
+- check 1.3-1.7mm
+- do we need to keep Orientationd in build_preprocess_transform function
+- in resamplingd bilinear/nearest/other for the image??
+- complete ... in 2. INTENSITY NORMALIZATION
+- 3. CROPPING motivation
+- choose pad dimension based on desired input unet (SpatialPadD build_process_transform)
+- 4. AUGMENTATION motivation
+- visualization
+
+
+-Why 1.25x1.25?
+-
