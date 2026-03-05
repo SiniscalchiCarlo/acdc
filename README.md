@@ -36,14 +36,10 @@ Also give faster convergence for the model because ....
 - 4. DATA AUGMENTATION
 
 TODO:
-- choose cropping
-- check 1.3-1.7mm
 - do we need to keep Orientationd in build_preprocess_transform function
-- in resamplingd bilinear/nearest/other for the image??
 - complete ... in 2. INTENSITY NORMALIZATION
-- 3. CROPPING motivation
 - choose pad dimension based on desired input unet (SpatialPadD build_process_transform)
-- 4. AUGMENTATION motivation
+- 4. AUGMENTATION motivation (should be realistic and happen in real life)
 - visualization
 
 

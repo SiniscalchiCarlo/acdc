@@ -1,8 +1,6 @@
 # acdc/train.py
-from acdc.data.listing import build_acdc_list
-from acdc.data.splits import split_by_patient
-from acdc.transforms.monai_transforms import build_train_transform, build_val_transform
-from acdc.data.dataloaders import build_loaders
+from src.load_data import build_acdc_list, split_by_patient, build_loaders
+from src.transforms import build_train_transform, build_val_transform
 
 
 def main():
@@ -10,12 +8,12 @@ def main():
     train_items, val_items = split_by_patient(items, n_splits=5, fold=0)
 
     train_t = build_train_transform(
-        target_spacing=(1.25, 1.25, 10.0),
+        target_spacing=(1.25, 1.25, -1),
         patch_size=(192, 192, 16),
         num_samples=4,
     )
     val_t = build_val_transform(
-        target_spacing=(1.25, 1.25, 10.0),
+        target_spacing=(1.25, 1.25, -1),
         pad_size=(192, 192, 16),
     )
 
@@ -25,7 +23,7 @@ def main():
         train_transform=train_t,
         val_transform=val_t,
         batch_size=2,
-        num_workers=4,
+        num_workers=4, # number CPU cores
     )
 
     batch = next(iter(train_loader))

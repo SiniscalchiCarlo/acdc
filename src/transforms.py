@@ -23,7 +23,12 @@ from typing import Tuple
 
 
 def build_preprocess_transform(
+    # We use median spacing of our image, which is 1.25 mm, 
+    # to balance addition and removal of info. 
+    # We resample to mm to keep original physical sizes keeping medical relevance.
+    # Z/slice direction needs no resampling, because we remain in 2D
     target_spacing: Tuple[float, float, float] = (1.25, 1.25, -1),  # semi-isotropic for ACDC
+    
     pad_size: Tuple[int, int, int] = (192, 192, 16),
 ) -> Compose:
     """
@@ -50,22 +55,25 @@ def build_preprocess_transform(
             # TODO: Do we need it??
             Orientationd(keys=["image", "label"], axcodes="RAS"),
 
-            # TODO: bilinear/nearest/other for the image??
             # resampling
+
+            # third order spline/cubic to ensure smooth transitions when upsampling, 
+            # mimicking continuous physical tissue densities changes and reduce artefacts, 
+            # yet requires more computations
             Spacingd(
                 keys=["image", "label"],
                 pixdim=target_spacing,
-                mode=("bilinear", "nearest"),
+                mode=("cubic", "nearest"),
             ),
             NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
-            CropForegroundd(keys=["image", "label"], source_key="image"),
+            # CropForegroundd(keys=["image", "label"], source_key="image"),
             SpatialPadd(keys=["image", "label"], spatial_size=pad_size),
         ]
     )
 
 
 def build_train_transform(
-    target_spacing: Tuple[float, float, float] = (1.25, 1.25, 10.0),
+    target_spacing: Tuple[float, float, float] = (1.25, 1.25, -1),
     patch_size: Tuple[int, int, int] = (192, 192, 16),
     num_samples: int = 4,
 ) -> Compose:
@@ -79,16 +87,16 @@ def build_train_transform(
     """
     preprocess = build_preprocess_transform(target_spacing=target_spacing, pad_size=patch_size)
 
-    roi_sampler = RandCropByPosNegLabeld(
-        keys=["image", "label"],
-        label_key="label",
-        spatial_size=patch_size,
-        pos=1,
-        neg=1,
-        num_samples=num_samples,
-        image_key="image",
-        image_threshold=0,
-    )
+    # roi_sampler = RandCropByPosNegLabeld(
+    #     keys=["image", "label"],
+    #     label_key="label",
+    #     spatial_size=patch_size,
+    #     pos=1,
+    #     neg=1,
+    #     num_samples=num_samples,
+    #     image_key="image",
+    #     image_threshold=0,
+    # )
 
     augment = Compose(
         [
@@ -118,11 +126,11 @@ def build_train_transform(
         ]
     )
 
-    return Compose([preprocess, roi_sampler, augment])
+    return Compose([preprocess, augment])
 
 
 def build_val_transform(
-    target_spacing: Tuple[float, float, float] = (1.25, 1.25, 10.0),
+    target_spacing: Tuple[float, float, float] = (1.25, 1.25, -1),
     pad_size: Tuple[int, int, int] = (192, 192, 16),
 ) -> Compose:
     """
