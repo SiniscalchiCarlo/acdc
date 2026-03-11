@@ -104,7 +104,9 @@ def build_loaders(
         val_ds,
         batch_size=1,
         shuffle=False,
-        num_workers=max(1, num_workers // 2),
+        # Respect an explicit request for single-process loading. This keeps the
+        # baseline runnable in restricted environments and makes debugging easier.
+        num_workers=max(0, num_workers // 2),
         pin_memory=True,
     )
     return train_loader, val_loader

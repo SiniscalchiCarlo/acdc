@@ -42,6 +42,22 @@ Why:
 - MRI intensities do not have a fixed absolute scale across acquisitions.
 - Restricting the statistics to nonzero voxels avoids background dominating the mean and standard deviation.
 
+### Visual quality control
+We now keep a visualization script to inspect raw and preprocessed overlays before trusting training metrics.
+
+Why:
+- Numeric summaries can show that shapes and labels are preserved, but they do not reveal whether anatomy looks distorted after orientation, resampling, or cropping.
+- Overlay figures make it easier to catch misalignment between image and label, over-aggressive cropping, or visually implausible interpolation artifacts.
+
+Current workflow:
+- Use `scripts/preprocess_qc.py` for numeric checks.
+- Use `scripts/preprocess_visual_qc.py` for slice overlays saved to `artifacts/preprocess_visual_qc/`.
+- Use the same visualization script with augmentation enabled to inspect whether random training perturbations remain anatomically plausible.
+
+Why augmentation needs its own visualization:
+- Deterministic preprocessing should be judged on anatomical fidelity and label alignment.
+- Training augmentation should be judged on realism and robustness, because transforms such as flips, affine perturbations, contrast changes, noise, and smoothing are not expected to appear in the deterministic pipeline.
+
 ## Issues Identified
 
 ### Train/validation preprocessing mismatch
@@ -69,6 +85,25 @@ Interpretation:
   - `+ normalization`
   - `+ normalization + resampling`
   - `+ normalization + resampling + crop/pad`
+
+## Baseline Training Plan
+We now keep a minimal training baseline to test whether the current preprocessing is good enough in practice.
+
+Why a baseline is needed before more preprocessing changes:
+- Geometry checks can show that the pipeline is consistent, but they cannot show whether the model learns useful segmentations.
+- A safe but loose preprocessing pipeline is still a valid baseline if it trains stably and gives sensible validation Dice.
+- Future crop or augmentation changes should be compared against one fixed reference setup rather than against intuition.
+
+Why the baseline is intentionally simple:
+- One architecture: a modest 3D UNet
+- One split policy: patient-wise GroupKFold
+- One validation method: Dice on a held-out fold
+- Sliding-window inference during validation so evaluation is compatible with full preprocessed volumes
+
+Why some engineering defaults are conservative:
+- `num_workers=0` reduces debugging noise and makes the first baseline less dependent on local multiprocessing behavior.
+- `cache_rate=0.0` reduces memory-related confounders while we are still validating the data pipeline.
+- A small number of epochs or capped batches can be used first as a smoke baseline before spending time on a longer run.
 
 ## Change Policy
 Whenever preprocessing parameters change, this file should be updated with:
