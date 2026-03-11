@@ -23,9 +23,11 @@ from monai.transforms import (
 )
 from typing import Tuple
 
+DEFAULT_TARGET_SPACING = (1.25, 1.25, -1.0)
+
 
 def build_preprocess_transform(
-    target_spacing: Tuple[float, float, float] = (1.25, 1.25, -1),  # semi-isotropic for ACDC
+    target_spacing: Tuple[float, float, float] = DEFAULT_TARGET_SPACING,
     pad_size: Tuple[int, int, int] = (192, 192, 16),
 ) -> Compose:
     """
@@ -40,6 +42,9 @@ def build_preprocess_transform(
 
     Notes:
       - Use bilinear interpolation for images and nearest for labels.
+      - Keep native z spacing with -1.0 because ACDC slice thickness is much
+        larger than the in-plane spacing, so forcing isotropy would add
+        through-plane interpolation artifacts.
       - nonzero=True is important for MRI to avoid background bias in mean/std.
     """
     return Compose(
@@ -49,11 +54,12 @@ def build_preprocess_transform(
             # Ensure input data to be pyTorch tensor or np array
             EnsureTyped(keys=["image", "label"]),
 
-            # TODO: Do we need it??
+            # Enforce a common orientation so downstream spatial operations
+            # behave consistently across scanners and sites.
             Orientationd(keys=["image", "label"], axcodes="RAS"),
 
-            # TODO: bilinear/nearest/other for the image??
-            # resampling
+            # Bilinear interpolation is appropriate for continuous MR intensities,
+            # while nearest-neighbor keeps label ids discrete.
             Spacingd(
                 keys=["image", "label"],
                 pixdim=target_spacing,
@@ -67,7 +73,7 @@ def build_preprocess_transform(
 
 
 def build_train_transform(
-    target_spacing: Tuple[float, float, float] = (1.25, 1.25, -1),
+    target_spacing: Tuple[float, float, float] = DEFAULT_TARGET_SPACING,
     patch_size: Tuple[int, int, int] = (192, 192, 16),
     num_samples: int = 4,
 ) -> Compose:
@@ -133,7 +139,7 @@ def build_train_transform(
 
 
 def build_val_transform(
-    target_spacing: Tuple[float, float, float] = (1.25, 1.25, 10.0),
+    target_spacing: Tuple[float, float, float] = DEFAULT_TARGET_SPACING,
     pad_size: Tuple[int, int, int] = (192, 192, 16),
 ) -> Compose:
     """

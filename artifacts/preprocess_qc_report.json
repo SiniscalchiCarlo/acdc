@@ -1,0 +1,1220 @@
+{
+  "config": {
+    "limit": 20,
+    "seed": 42,
+    "target_spacing": [
+      1.25,
+      1.25,
+      -1.0
+    ],
+    "pad_size": [
+      192,
+      192,
+      16
+    ]
+  },
+  "summary": {
+    "num_cases": 20,
+    "num_cases_with_warnings": 0,
+    "raw_shape_summary": {
+      "min": [
+        180.0,
+        154.0,
+        6.0
+      ],
+      "median": [
+        224.0,
+        256.0,
+        10.0
+      ],
+      "max": [
+        256.0,
+        256.0,
+        16.0
+      ]
+    },
+    "processed_shape_summary": {
+      "min": [
+        206.0,
+        213.0,
+        16.0
+      ],
+      "median": [
+        253.5,
+        279.0,
+        16.0
+      ],
+      "max": [
+        319.0,
+        319.0,
+        16.0
+      ]
+    },
+    "raw_spacing_summary": {
+      "min": [
+        1.3672,
+        1.3672,
+        5.0
+      ],
+      "median": [
+        1.4648,
+        1.4648,
+        10.0
+      ],
+      "max": [
+        1.7857,
+        1.7857,
+        10.0
+      ]
+    },
+    "processed_spacing_summary": {
+      "min": [
+        1.25,
+        1.25,
+        5.0
+      ],
+      "median": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "max": [
+        1.25,
+        1.25,
+        10.0
+      ]
+    },
+    "processed_label_bbox_shape_summary": {
+      "min": [
+        55.0,
+        55.0,
+        6.0
+      ],
+      "median": [
+        84.0,
+        81.5,
+        9.0
+      ],
+      "max": [
+        122.0,
+        100.0,
+        16.0
+      ]
+    },
+    "processed_foreground_fraction": {
+      "min": 0.007761,
+      "median": 0.025005,
+      "max": 0.051205
+    },
+    "processed_label_sets": [
+      [
+        0,
+        1,
+        2,
+        3
+      ]
+    ]
+  },
+  "cases": [
+    {
+      "patient": "patient082",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient082/patient082_frame07.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient082/patient082_frame07_gt.nii.gz",
+      "raw_image_shape": [
+        224,
+        154,
+        16
+      ],
+      "raw_label_shape": [
+        224,
+        154,
+        16
+      ],
+      "raw_spacing": [
+        1.7857,
+        1.7857,
+        5.0
+      ],
+      "processed_image_shape": [
+        319,
+        220,
+        16
+      ],
+      "processed_label_shape": [
+        319,
+        220,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        5.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        82,
+        76,
+        16
+      ],
+      "processed_foreground_fraction": 0.034766,
+      "warnings": []
+    },
+    {
+      "patient": "patient015",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient015/patient015_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient015/patient015_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        256,
+        216,
+        9
+      ],
+      "raw_label_shape": [
+        256,
+        216,
+        9
+      ],
+      "raw_spacing": [
+        1.3672,
+        1.3672,
+        10.0
+      ],
+      "processed_image_shape": [
+        279,
+        234,
+        16
+      ],
+      "processed_label_shape": [
+        279,
+        234,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        84,
+        82,
+        9
+      ],
+      "processed_foreground_fraction": 0.025874,
+      "warnings": []
+    },
+    {
+      "patient": "patient004",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient004/patient004_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient004/patient004_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        232,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        232,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.3672,
+        1.3672,
+        10.0
+      ],
+      "processed_image_shape": [
+        223,
+        280,
+        16
+      ],
+      "processed_label_shape": [
+        223,
+        280,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        92,
+        77,
+        10
+      ],
+      "processed_foreground_fraction": 0.034309,
+      "warnings": []
+    },
+    {
+      "patient": "patient095",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient095/patient095_frame12.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient095/patient095_frame12_gt.nii.gz",
+      "raw_image_shape": [
+        180,
+        224,
+        14
+      ],
+      "raw_label_shape": [
+        180,
+        224,
+        14
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        5.0
+      ],
+      "processed_image_shape": [
+        223,
+        278,
+        16
+      ],
+      "processed_label_shape": [
+        223,
+        278,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        5.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        76,
+        80,
+        13
+      ],
+      "processed_foreground_fraction": 0.034988,
+      "warnings": []
+    },
+    {
+      "patient": "patient036",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient036/patient036_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient036/patient036_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        216,
+        256,
+        8
+      ],
+      "raw_label_shape": [
+        216,
+        256,
+        8
+      ],
+      "raw_spacing": [
+        1.4453,
+        1.4453,
+        10.0
+      ],
+      "processed_image_shape": [
+        248,
+        295,
+        16
+      ],
+      "processed_label_shape": [
+        248,
+        295,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        86,
+        81,
+        8
+      ],
+      "processed_foreground_fraction": 0.02121,
+      "warnings": []
+    },
+    {
+      "patient": "patient032",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient032/patient032_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient032/patient032_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        240,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        240,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        10.0
+      ],
+      "processed_image_shape": [
+        296,
+        311,
+        16
+      ],
+      "processed_label_shape": [
+        296,
+        311,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        95,
+        90,
+        10
+      ],
+      "processed_foreground_fraction": 0.022264,
+      "warnings": []
+    },
+    {
+      "patient": "patient029",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient029/patient029_frame12.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient029/patient029_frame12_gt.nii.gz",
+      "raw_image_shape": [
+        192,
+        256,
+        11
+      ],
+      "raw_label_shape": [
+        192,
+        256,
+        11
+      ],
+      "raw_spacing": [
+        1.3672,
+        1.3672,
+        10.0
+      ],
+      "processed_image_shape": [
+        206,
+        278,
+        16
+      ],
+      "processed_label_shape": [
+        206,
+        278,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        72,
+        77,
+        8
+      ],
+      "processed_foreground_fraction": 0.019232,
+      "warnings": []
+    },
+    {
+      "patient": "patient018",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient018/patient018_frame10.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient018/patient018_frame10_gt.nii.gz",
+      "raw_image_shape": [
+        216,
+        256,
+        8
+      ],
+      "raw_label_shape": [
+        216,
+        256,
+        8
+      ],
+      "raw_spacing": [
+        1.3672,
+        1.3672,
+        10.0
+      ],
+      "processed_image_shape": [
+        231,
+        278,
+        16
+      ],
+      "processed_label_shape": [
+        231,
+        278,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        84,
+        90,
+        8
+      ],
+      "processed_foreground_fraction": 0.024136,
+      "warnings": []
+    },
+    {
+      "patient": "patient095",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient095/patient095_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient095/patient095_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        180,
+        224,
+        14
+      ],
+      "raw_label_shape": [
+        180,
+        224,
+        14
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        5.0
+      ],
+      "processed_image_shape": [
+        223,
+        278,
+        16
+      ],
+      "processed_label_shape": [
+        223,
+        278,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        5.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        90,
+        92,
+        14
+      ],
+      "processed_foreground_fraction": 0.051205,
+      "warnings": []
+    },
+    {
+      "patient": "patient014",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient014/patient014_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient014/patient014_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        256,
+        216,
+        10
+      ],
+      "raw_label_shape": [
+        256,
+        216,
+        10
+      ],
+      "raw_spacing": [
+        1.3672,
+        1.3672,
+        10.0
+      ],
+      "processed_image_shape": [
+        277,
+        234,
+        16
+      ],
+      "processed_label_shape": [
+        277,
+        234,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        122,
+        100,
+        10
+      ],
+      "processed_foreground_fraction": 0.045171,
+      "warnings": []
+    },
+    {
+      "patient": "patient087",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient087/patient087_frame10.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient087/patient087_frame10_gt.nii.gz",
+      "raw_image_shape": [
+        256,
+        184,
+        8
+      ],
+      "raw_label_shape": [
+        256,
+        184,
+        8
+      ],
+      "raw_spacing": [
+        1.4453,
+        1.4453,
+        10.0
+      ],
+      "processed_image_shape": [
+        295,
+        213,
+        16
+      ],
+      "processed_label_shape": [
+        295,
+        213,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        93,
+        91,
+        8
+      ],
+      "processed_foreground_fraction": 0.027296,
+      "warnings": []
+    },
+    {
+      "patient": "patient070",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient070/patient070_frame10.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient070/patient070_frame10_gt.nii.gz",
+      "raw_image_shape": [
+        208,
+        256,
+        6
+      ],
+      "raw_label_shape": [
+        208,
+        256,
+        6
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        10.0
+      ],
+      "processed_image_shape": [
+        259,
+        319,
+        16
+      ],
+      "processed_label_shape": [
+        259,
+        319,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        62,
+        58,
+        6
+      ],
+      "processed_foreground_fraction": 0.007761,
+      "warnings": []
+    },
+    {
+      "patient": "patient012",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient012/patient012_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient012/patient012_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        184,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        184,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        10.0
+      ],
+      "processed_image_shape": [
+        227,
+        317,
+        16
+      ],
+      "processed_label_shape": [
+        227,
+        317,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        88,
+        97,
+        10
+      ],
+      "processed_foreground_fraction": 0.031595,
+      "warnings": []
+    },
+    {
+      "patient": "patient076",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient076/patient076_frame12.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient076/patient076_frame12_gt.nii.gz",
+      "raw_image_shape": [
+        256,
+        256,
+        8
+      ],
+      "raw_label_shape": [
+        256,
+        256,
+        8
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        10.0
+      ],
+      "processed_image_shape": [
+        316,
+        318,
+        16
+      ],
+      "processed_label_shape": [
+        316,
+        318,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        78,
+        67,
+        8
+      ],
+      "processed_foreground_fraction": 0.010154,
+      "warnings": []
+    },
+    {
+      "patient": "patient055",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient055/patient055_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient055/patient055_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        256,
+        216,
+        9
+      ],
+      "raw_label_shape": [
+        256,
+        216,
+        9
+      ],
+      "raw_spacing": [
+        1.4844,
+        1.4844,
+        10.0
+      ],
+      "processed_image_shape": [
+        302,
+        253,
+        16
+      ],
+      "processed_label_shape": [
+        302,
+        253,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        83,
+        83,
+        9
+      ],
+      "processed_foreground_fraction": 0.022434,
+      "warnings": []
+    },
+    {
+      "patient": "patient005",
+      "phase": "ED",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient005/patient005_frame01.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient005/patient005_frame01_gt.nii.gz",
+      "raw_image_shape": [
+        256,
+        216,
+        10
+      ],
+      "raw_label_shape": [
+        256,
+        216,
+        10
+      ],
+      "raw_spacing": [
+        1.4062,
+        1.4062,
+        10.0
+      ],
+      "processed_image_shape": [
+        287,
+        242,
+        16
+      ],
+      "processed_label_shape": [
+        287,
+        242,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        96,
+        98,
+        10
+      ],
+      "processed_foreground_fraction": 0.038184,
+      "warnings": []
+    },
+    {
+      "patient": "patient004",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient004/patient004_frame15.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient004/patient004_frame15_gt.nii.gz",
+      "raw_image_shape": [
+        232,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        232,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.3672,
+        1.3672,
+        10.0
+      ],
+      "processed_image_shape": [
+        223,
+        280,
+        16
+      ],
+      "processed_label_shape": [
+        223,
+        280,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        86,
+        73,
+        10
+      ],
+      "processed_foreground_fraction": 0.031109,
+      "warnings": []
+    },
+    {
+      "patient": "patient012",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient012/patient012_frame13.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient012/patient012_frame13_gt.nii.gz",
+      "raw_image_shape": [
+        184,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        184,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        10.0
+      ],
+      "processed_image_shape": [
+        227,
+        317,
+        16
+      ],
+      "processed_label_shape": [
+        227,
+        317,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        77,
+        89,
+        9
+      ],
+      "processed_foreground_fraction": 0.0237,
+      "warnings": []
+    },
+    {
+      "patient": "patient028",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient028/patient028_frame09.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient028/patient028_frame09_gt.nii.gz",
+      "raw_image_shape": [
+        224,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        224,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.5625,
+        1.5625,
+        10.0
+      ],
+      "processed_image_shape": [
+        279,
+        316,
+        16
+      ],
+      "processed_label_shape": [
+        279,
+        316,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        80,
+        69,
+        9
+      ],
+      "processed_foreground_fraction": 0.014949,
+      "warnings": []
+    },
+    {
+      "patient": "patient030",
+      "phase": "ES",
+      "image_path": "/home/carlo/Download/ACDC/database/training/patient030/patient030_frame12.nii.gz",
+      "label_path": "/home/carlo/Download/ACDC/database/training/patient030/patient030_frame12_gt.nii.gz",
+      "raw_image_shape": [
+        216,
+        256,
+        10
+      ],
+      "raw_label_shape": [
+        216,
+        256,
+        10
+      ],
+      "raw_spacing": [
+        1.4453,
+        1.4453,
+        10.0
+      ],
+      "processed_image_shape": [
+        245,
+        295,
+        16
+      ],
+      "processed_label_shape": [
+        245,
+        295,
+        16
+      ],
+      "processed_spacing": [
+        1.25,
+        1.25,
+        10.0
+      ],
+      "raw_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_values": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "processed_label_bbox_shape": [
+        55,
+        55,
+        8
+      ],
+      "processed_foreground_fraction": 0.010452,
+      "warnings": []
+    }
+  ]
+}
