@@ -1,5 +1,6 @@
 # acdc/transforms/monai_transforms.py
 from __future__ import annotations
+from monai.transforms import RandFlipd
 
 import numpy as np
 from monai.transforms import (
@@ -18,6 +19,7 @@ from monai.transforms import (
     RandShiftIntensityd,
     RandAdjustContrastd,
     RandGaussianNoised,
+    RandGaussianSmoothd
 )
 from typing import Tuple
 
@@ -65,7 +67,7 @@ def build_preprocess_transform(
 
 
 def build_train_transform(
-    target_spacing: Tuple[float, float, float] = (1.25, 1.25, 10.0),
+    target_spacing: Tuple[float, float, float] = (1.25, 1.25, -1),
     patch_size: Tuple[int, int, int] = (192, 192, 16),
     num_samples: int = 4,
 ) -> Compose:
@@ -94,15 +96,17 @@ def build_train_transform(
         [
             RandAffined(
                 keys=["image", "label"],
-                prob=0.8,
+                prob=0.5,
                 # Keep rotations moderate for cardiac SA stacks
                 rotate_range=(0.0, 0.0, np.deg2rad(15.0)),
                 # Scale mostly in-plane; z scaling often less meaningful for thick slices
                 scale_range=(0.10, 0.10, 0.0),
-                translate_range=(10, 10, 0),
+                translate_range=(5, 5, 0),
                 mode=("bilinear", "nearest"),
                 padding_mode="border",
             ),
+            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
+            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
             #Rand3DElasticd(
             #    keys=["image", "label"],
             #    prob=0.25,
@@ -113,8 +117,15 @@ def build_train_transform(
             #),
             RandShiftIntensityd(keys=["image"], prob=0.5, offsets=0.1),
             # Contrast/gamma-like adjustment (often used as a proxy for gamma correction)
-            RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.7, 1.5)),
+            RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.8, 1.2)),
             RandGaussianNoised(keys=["image"], prob=0.2, mean=0.0, std=0.01),
+            RandGaussianSmoothd(
+                keys=["image"],
+                prob=0.15,
+                sigma_x=(0.5, 1.0),
+                sigma_y=(0.5, 1.0),
+                sigma_z=(0.0, 0.0),
+            ),
         ]
     )
 
