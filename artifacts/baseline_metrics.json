@@ -2,7 +2,7 @@
   "config": {
     "fold": 0,
     "n_splits": 5,
-    "epochs": 1,
+    "epochs": 5,
     "batch_size": 1,
     "lr": 0.001,
     "seed": 42,
@@ -20,18 +20,38 @@
     "cache_rate_train": 0.0,
     "cache_rate_val": 0.0,
     "val_every": 1,
-    "max_train_batches": 1,
-    "max_val_batches": 1,
-    "device": "cpu"
+    "max_train_batches": 20,
+    "max_val_batches": 5,
+    "device": "cuda"
   },
   "train_cases": 160,
   "val_cases": 40,
-  "best_val_dice": 0.031426,
+  "best_val_dice": 0.394692,
   "history": [
     {
       "epoch": 1,
-      "train_loss": 2.440047,
-      "val_dice": 0.031426
+      "train_loss": 1.865616,
+      "val_dice": 0.095177
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.183368,
+      "val_dice": 0.109191
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.919821,
+      "val_dice": 0.289557
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.852376,
+      "val_dice": 0.26476
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.805516,
+      "val_dice": 0.394692
     }
   ]
 }
