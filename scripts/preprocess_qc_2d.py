@@ -21,7 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.load_data_2D import build_acdc_list
-from src.transforms_2D import build_train_transform, build_val_transform
+from src.transforms_2D import build_train_transform, build_train_transform_no_crop, build_val_transform, build_val_transform_no_crop
 
 LIMIT = 20
 SEED = 42
@@ -80,16 +80,20 @@ def main() -> None:
             EnsureTyped(keys=["image", "label"]),
         ]
     )
-    preprocess_transform = build_val_transform(
-        target_spacing=TARGET_SPACING,
-        patch_size=PATCH_SIZE,
-        foreground_margin=FOREGROUND_MARGIN,
-    )
-    train_transform = build_train_transform(
-        target_spacing=TARGET_SPACING,
-        patch_size=PATCH_SIZE,
-        foreground_margin=FOREGROUND_MARGIN,
-    )
+
+    preprocess_transform = build_val_transform_no_crop(target_spacing=TARGET_SPACING, pad_size=PATCH_SIZE)
+    train_transform = build_train_transform_no_crop(target_spacing=TARGET_SPACING, pad_size=PATCH_SIZE)
+
+    #preprocess_transform = build_val_transform(
+    #    target_spacing=TARGET_SPACING,
+    #    patch_size=PATCH_SIZE,
+    #    foreground_margin=FOREGROUND_MARGIN,
+    #)
+    #train_transform = build_train_transform(
+    #    target_spacing=TARGET_SPACING,
+    #    patch_size=PATCH_SIZE,
+    #    foreground_margin=FOREGROUND_MARGIN,
+    #)
 
     warnings = 0
     reports: list[dict[str, object]] = []

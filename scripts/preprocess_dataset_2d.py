@@ -13,10 +13,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from config import preprocessed_2d_path
 from src.load_data_2D import build_acdc_list
-from src.transforms_2D import build_val_transform
+from src.transforms_2D import build_val_transform, build_val_transform_no_crop
 
 TARGET_SPACING = (1.25, 1.25, -1.0)
-PATCH_SIZE = (192, 192)
+PATCH_SIZE = (256, 256)
 FOREGROUND_MARGIN = 16
 INCLUDE_BACKGROUND_SLICES = True
 MIN_LABEL_PIXELS = 1
@@ -28,11 +28,13 @@ def main() -> None:
         include_background_slices=INCLUDE_BACKGROUND_SLICES,
         min_label_pixels=MIN_LABEL_PIXELS,
     )
-    transform = build_val_transform(
-        target_spacing=TARGET_SPACING,
-        patch_size=PATCH_SIZE,
-        foreground_margin=FOREGROUND_MARGIN,
-    )
+    #transform = build_val_transform(
+    #    target_spacing=TARGET_SPACING,
+    #    patch_size=PATCH_SIZE,
+    #    foreground_margin=FOREGROUND_MARGIN,
+    #)
+    transform = build_val_transform_no_crop(target_spacing=TARGET_SPACING, pad_size=PATCH_SIZE)
+
 
     output_dir = Path(preprocessed_2d_path)
     samples_dir = output_dir / "samples"
