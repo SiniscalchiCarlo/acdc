@@ -12,3 +12,5 @@ wheels/
 AGENTS.md
 HANDOFF.md
 config_local.py
+
+artifacts/

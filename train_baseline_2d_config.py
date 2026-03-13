@@ -1,0 +1,35 @@
+from pathlib import Path
+
+from config import preprocessed_2d_path
+
+FOLD = 0
+N_SPLITS = 5
+EPOCHS = 100
+BATCH_SIZE = 32
+LR = 1e-3
+WEIGHT_DECAY = 1e-5
+SEED = 42
+
+PATCH_SIZE = (192, 192)
+TARGET_SPACING = (1.25, 1.25, -1.0)
+FOREGROUND_MARGIN = 16
+INCLUDE_BACKGROUND_SLICES = True
+MIN_LABEL_PIXELS = 1
+
+NUM_WORKERS = 2
+CACHE_RATE_TRAIN = 1.0
+CACHE_RATE_VAL = 1.0
+PIN_MEMORY = False
+
+VAL_EVERY = 1
+EARLY_STOP_PATIENCE = 20
+SCHEDULER_PATIENCE = 6
+SCHEDULER_FACTOR = 0.5
+SCHEDULER_MIN_LR = 1e-6
+
+MAX_TRAIN_BATCHES = None
+MAX_VAL_BATCHES = None
+
+PREPROCESSED_ROOT = Path(preprocessed_2d_path)
+OUTPUT = Path("artifacts") / "baseline_metrics_2d.json"
+MODEL_OUTPUT = Path("artifacts") / "baseline_model_2d.pt"

@@ -22,6 +22,7 @@ from monai.transforms import (
     RandGaussianSmoothd,
     RandShiftIntensityd,
     ResizeWithPadOrCropd,
+    SpatialPadd,
     Spacingd,
     Transform,
 )
@@ -98,13 +99,37 @@ def build_preprocess_transform(
             ),
             NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
             ExtractSliceByIndexd(keys=["image", "label"], index_key="slice_idx"),
-            #CropForegroundd(
-            #    keys=["image", "label"],
-            #    source_key="image",
-            #    margin=foreground_margin,
-            #    allow_smaller=True,
-            #),
+            CropForegroundd(
+                keys=["image", "label"],
+                source_key="image",
+                margin=foreground_margin,
+                allow_smaller=True,
+            ),
             ResizeWithPadOrCropd(keys=["image", "label"], spatial_size=patch_size),
+            EnsureTyped(keys=["image", "label"]),
+        ]
+    )
+
+
+def build_preprocess_transform_no_crop(
+    target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
+    pad_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
+) -> Compose:
+    """Build deterministic preprocessing without foreground cropping."""
+    return Compose(
+        [
+            LoadImaged(keys=["image", "label"]),
+            EnsureChannelFirstd(keys=["image", "label"]),
+            EnsureTyped(keys=["image", "label"]),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Spacingd(
+                keys=["image", "label"],
+                pixdim=target_spacing,
+                mode=("bilinear", "nearest"),
+            ),
+            NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
+            ExtractSliceByIndexd(keys=["image", "label"], index_key="slice_idx"),
+            SpatialPadd(keys=["image", "label"], spatial_size=pad_size),
             EnsureTyped(keys=["image", "label"]),
         ]
     )
@@ -117,7 +142,7 @@ def build_train_transform(
 ) -> Compose:
     """Build 2D training transforms that output `[C, H, W]` tensors for a UNet."""
 
-    preprocess = build_preprocess_transform(
+    preprocess = build_preprocess_transform_no_crop(
         target_spacing=target_spacing,
         patch_size=patch_size,
         foreground_margin=foreground_margin,
@@ -159,10 +184,21 @@ def build_val_transform(
     foreground_margin: int = DEFAULT_FOREGROUND_MARGIN_2D,
 ) -> Compose:
     """Build deterministic validation transforms for slice-based 2D inference."""
-    return build_preprocess_transform(
+    return build_preprocess_transform_no_crop(
         target_spacing=target_spacing,
         patch_size=patch_size,
         foreground_margin=foreground_margin,
+    )
+
+
+def build_val_transform_no_crop(
+    target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
+    pad_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
+) -> Compose:
+    """Build deterministic validation preprocessing without foreground cropping."""
+    return build_preprocess_transform_no_crop(
+        target_spacing=target_spacing,
+        pad_size=pad_size,
     )
 
 
