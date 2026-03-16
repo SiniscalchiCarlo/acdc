@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from monai.data import decollate_batch
+from monai.data import decollate_batch, pad_list_data_collate
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
 from monai.networks.nets import UNet
@@ -19,7 +19,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import train_baseline_2d_config as cfg
-from src.load_data_2D import build_acdc_list, build_loaders, build_preprocessed_2d_list, split_by_patient
+from src.load_data_2D import (
+    build_acdc_list,
+    build_loaders,
+    build_preprocessed_2d_list,
+    load_preprocessed_2d_manifest,
+    split_by_patient,
+)
 from src.transforms_2D import (
     build_preprocessed_train_transform,
     build_preprocessed_val_transform,
@@ -54,6 +60,33 @@ def build_post_transforms() -> tuple[Compose, Compose]:
     post_pred = Compose([EnsureType(), AsDiscrete(argmax=True, to_onehot=4)])
     post_label = Compose([EnsureType(), AsDiscrete(to_onehot=4)])
     return post_pred, post_label
+
+
+def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
+    """Fail fast when the saved offline preprocessing does not match the training config."""
+    saved_config = manifest.get("config")
+    if not isinstance(saved_config, dict):
+        raise RuntimeError("Malformed preprocessed manifest: missing 'config' section.")
+
+    expected = {
+        "target_spacing": list(cfg.TARGET_SPACING),
+        "patch_size": list(cfg.PATCH_SIZE),
+        "use_foreground_crop": cfg.USE_FOREGROUND_CROP,
+        "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
+        "min_label_pixels": cfg.MIN_LABEL_PIXELS,
+    }
+    mismatches: list[str] = []
+    for key, expected_value in expected.items():
+        actual_value = saved_config.get(key)
+        if actual_value != expected_value:
+            mismatches.append(f"{key}: expected {expected_value}, found {actual_value}")
+
+    if mismatches:
+        details = "; ".join(mismatches)
+        raise RuntimeError(
+            "Preprocessed dataset config does not match train_baseline_2d_config.py. "
+            f"Regenerate the offline dataset or align the config. {details}"
+        )
 
 
 def train_one_epoch(
@@ -166,6 +199,8 @@ def main() -> None:
             min_label_pixels=cfg.MIN_LABEL_PIXELS,
         )
     else:
+        manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
+        validate_preprocessed_manifest(manifest)
         items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
     train_items, val_items = split_by_patient(items, n_splits=cfg.N_SPLITS, fold=cfg.FOLD)
 
@@ -173,20 +208,28 @@ def main() -> None:
         train_transform = build_train_transform(
             target_spacing=cfg.TARGET_SPACING,
             patch_size=cfg.PATCH_SIZE,
+            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
             foreground_margin=cfg.FOREGROUND_MARGIN,
         )
         val_transform = build_val_transform(
             target_spacing=cfg.TARGET_SPACING,
             patch_size=cfg.PATCH_SIZE,
+            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
             foreground_margin=cfg.FOREGROUND_MARGIN,
         )
+        collate_fn = None
     else:
         train_transform = build_preprocessed_train_transform(
             patch_size=cfg.PATCH_SIZE,
+            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
+            foreground_margin=cfg.FOREGROUND_MARGIN,
         )
         val_transform = build_preprocessed_val_transform(
             patch_size=cfg.PATCH_SIZE,
+            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
+            foreground_margin=cfg.FOREGROUND_MARGIN,
         )
+        collate_fn = pad_list_data_collate
 
     train_loader, val_loader = build_loaders(
         train_items=train_items,
@@ -199,6 +242,7 @@ def main() -> None:
         cache_rate_val=cfg.CACHE_RATE_VAL,
         seed=cfg.SEED,
         pin_memory=cfg.PIN_MEMORY,
+        collate_fn=collate_fn,
     )
 
     model = build_model().to(device)

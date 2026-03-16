@@ -1,6 +1,15 @@
 from pathlib import Path
 
-from config import preprocessed_2d_path
+from config import (
+    foreground_margin_2d,
+    include_background_slices_2d,
+    min_label_pixels_2d,
+    patch_size_2d,
+    preprocessed_2d_path,
+    seed_2d,
+    target_spacing_2d,
+    use_foreground_crop_2d,
+)
 
 FOLD = 0
 N_SPLITS = 5
@@ -8,13 +17,14 @@ EPOCHS = 100
 BATCH_SIZE = 32
 LR = 1e-3
 WEIGHT_DECAY = 1e-5
-SEED = 42
+SEED = seed_2d
 
-PATCH_SIZE = (192, 192)
-TARGET_SPACING = (1.25, 1.25, -1.0)
-FOREGROUND_MARGIN = 16
-INCLUDE_BACKGROUND_SLICES = True
-MIN_LABEL_PIXELS = 1
+PATCH_SIZE = patch_size_2d
+TARGET_SPACING = target_spacing_2d
+USE_FOREGROUND_CROP = use_foreground_crop_2d
+FOREGROUND_MARGIN = foreground_margin_2d
+INCLUDE_BACKGROUND_SLICES = include_background_slices_2d
+MIN_LABEL_PIXELS = min_label_pixels_2d
 
 NUM_WORKERS = 2
 CACHE_RATE_TRAIN = 1.0

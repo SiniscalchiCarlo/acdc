@@ -15,7 +15,7 @@ It also highlights the important outputs and comments on the observed results.
 ### Command
 
 ```bash
-.venv/bin/python scripts/preprocess_qc_2d.py
+python scripts/preprocess_qc_2d.py
 ```
 
 ### Important output
@@ -41,7 +41,7 @@ The foreground fraction varies from `0.0` to about `0.153`, which is expected be
 ### Command
 
 ```bash
-.venv/bin/python scripts/preprocess_dataset_2d.py
+python scripts/preprocess_dataset_2d.py
 ```
 
 ### Important output
@@ -62,7 +62,7 @@ This is important because it removes the most expensive preprocessing work from 
 ### Command requested first
 
 ```bash
-.venv/bin/python scripts/train_baseline_2d.py
+python scripts/train_baseline_2d.py
 ```
 
 ### Important output from the final training log

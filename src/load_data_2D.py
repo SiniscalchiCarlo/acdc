@@ -96,16 +96,12 @@ def build_preprocessed_2d_list(
     manifest_name: str = "manifest.json",
 ) -> list[dict[str, Any]]:
     """Load a preprocessed 2D dataset manifest from disk."""
-    root = Path(preprocessed_root)
-    manifest_path = root / manifest_name
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"Preprocessed manifest not found: {manifest_path}")
-
-    manifest = json.loads(manifest_path.read_text())
+    manifest = load_preprocessed_2d_manifest(preprocessed_root=preprocessed_root, manifest_name=manifest_name)
     items = manifest.get("items", [])
     if not items:
-        raise RuntimeError(f"No items found in preprocessed manifest: {manifest_path}")
+        raise RuntimeError(f"No items found in preprocessed manifest: {Path(preprocessed_root) / manifest_name}")
 
+    root = Path(preprocessed_root)
     normalized_items: list[dict[str, Any]] = []
     for item in items:
         item_copy = dict(item)
@@ -115,6 +111,22 @@ def build_preprocessed_2d_list(
         item_copy["sample"] = str(sample_path)
         normalized_items.append(item_copy)
     return normalized_items
+
+
+def load_preprocessed_2d_manifest(
+    preprocessed_root: str | Path,
+    manifest_name: str = "manifest.json",
+) -> dict[str, Any]:
+    """Load and return the full preprocessed manifest, including stored config."""
+    root = Path(preprocessed_root)
+    manifest_path = root / manifest_name
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Preprocessed manifest not found: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text())
+    if "items" not in manifest:
+        raise RuntimeError(f"Malformed preprocessed manifest: missing 'items' in {manifest_path}")
+    return manifest
 
 
 def _build_slice_items(
@@ -173,6 +185,7 @@ def build_loaders(
     cache_rate_val: float = 1.0,
     seed: int = 42,
     pin_memory: bool = True,
+    collate_fn=None,
 ) -> tuple[DataLoader, DataLoader]:
     """Create MONAI cache datasets and data loaders for 2D slice training."""
     set_determinism(seed=seed)
@@ -198,6 +211,7 @@ def build_loaders(
         num_workers=num_workers,
         pin_memory=pin_memory,
         persistent_workers=persistent_workers,
+        collate_fn=collate_fn,
     )
     val_loader = DataLoader(
         val_ds,
@@ -206,6 +220,7 @@ def build_loaders(
         num_workers=num_workers,
         pin_memory=pin_memory,
         persistent_workers=persistent_workers,
+        collate_fn=collate_fn,
     )
 
     return train_loader, val_loader

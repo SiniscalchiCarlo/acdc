@@ -11,15 +11,24 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from config import preprocessed_2d_path
+from config import (
+    foreground_margin_2d,
+    include_background_slices_2d,
+    min_label_pixels_2d,
+    patch_size_2d,
+    preprocessed_2d_path,
+    target_spacing_2d,
+    use_foreground_crop_2d,
+)
 from src.load_data_2D import build_acdc_list
-from src.transforms_2D import build_val_transform, build_val_transform_no_crop
+from src.transforms_2D import build_val_transform
 
-TARGET_SPACING = (1.25, 1.25, -1.0)
-PATCH_SIZE = (256, 256)
-FOREGROUND_MARGIN = 16
-INCLUDE_BACKGROUND_SLICES = True
-MIN_LABEL_PIXELS = 1
+TARGET_SPACING = target_spacing_2d
+PATCH_SIZE = patch_size_2d
+USE_FOREGROUND_CROP = use_foreground_crop_2d
+FOREGROUND_MARGIN = foreground_margin_2d
+INCLUDE_BACKGROUND_SLICES = include_background_slices_2d
+MIN_LABEL_PIXELS = min_label_pixels_2d
 
 
 def main() -> None:
@@ -28,13 +37,12 @@ def main() -> None:
         include_background_slices=INCLUDE_BACKGROUND_SLICES,
         min_label_pixels=MIN_LABEL_PIXELS,
     )
-    #transform = build_val_transform(
-    #    target_spacing=TARGET_SPACING,
-    #    patch_size=PATCH_SIZE,
-    #    foreground_margin=FOREGROUND_MARGIN,
-    #)
-    transform = build_val_transform_no_crop(target_spacing=TARGET_SPACING, pad_size=PATCH_SIZE)
-
+    transform = build_val_transform(
+        target_spacing=TARGET_SPACING,
+        patch_size=PATCH_SIZE,
+        use_foreground_crop=USE_FOREGROUND_CROP,
+        foreground_margin=FOREGROUND_MARGIN,
+    )
 
     output_dir = Path(preprocessed_2d_path)
     samples_dir = output_dir / "samples"
@@ -66,6 +74,7 @@ def main() -> None:
         "config": {
             "target_spacing": list(TARGET_SPACING),
             "patch_size": list(PATCH_SIZE),
+            "use_foreground_crop": USE_FOREGROUND_CROP,
             "foreground_margin": FOREGROUND_MARGIN,
             "include_background_slices": INCLUDE_BACKGROUND_SLICES,
             "min_label_pixels": MIN_LABEL_PIXELS,

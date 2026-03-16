@@ -20,17 +20,28 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from config import (
+    foreground_margin_2d,
+    patch_size_2d,
+    preprocess_qc_limit_2d,
+    preprocess_qc_output_figures_2d,
+    preprocess_qc_output_json_2d,
+    seed_2d,
+    target_spacing_2d,
+    use_foreground_crop_2d,
+)
 from src.load_data_2D import build_acdc_list
-from src.transforms_2D import build_train_transform, build_train_transform_no_crop, build_val_transform, build_val_transform_no_crop
+from src.transforms_2D import build_train_transform, build_val_transform
 
-LIMIT = 20
-SEED = 42
-TARGET_SPACING = (1.25, 1.25, -1.0)
-PATCH_SIZE = (192, 192)
-FOREGROUND_MARGIN = 16
+LIMIT = preprocess_qc_limit_2d
+SEED = seed_2d
+TARGET_SPACING = target_spacing_2d
+PATCH_SIZE = patch_size_2d
+USE_FOREGROUND_CROP = use_foreground_crop_2d
+FOREGROUND_MARGIN = foreground_margin_2d
 
-OUTPUT_JSON = REPO_ROOT / "artifacts" / "preprocess_qc_report_2d.json"
-OUTPUT_FIGURES = REPO_ROOT / "artifacts" / "preprocess_visual_qc_2d"
+OUTPUT_JSON = Path(preprocess_qc_output_json_2d)
+OUTPUT_FIGURES = Path(preprocess_qc_output_figures_2d)
 
 
 def save_figure(
@@ -54,9 +65,6 @@ def save_figure(
     ]
 
     for ax, image, label, panel_title in panels:
-        image = np.flipud(image.T)
-        label = np.flipud(label.T)
-
         ax.imshow(image, cmap="gray", origin="lower")
         ax.imshow(np.ma.masked_where(label == 0, label), cmap="jet", alpha=0.35, origin="lower")
         ax.set_title(panel_title)
@@ -81,19 +89,18 @@ def main() -> None:
         ]
     )
 
-    preprocess_transform = build_val_transform_no_crop(target_spacing=TARGET_SPACING, pad_size=PATCH_SIZE)
-    train_transform = build_train_transform_no_crop(target_spacing=TARGET_SPACING, pad_size=PATCH_SIZE)
-
-    #preprocess_transform = build_val_transform(
-    #    target_spacing=TARGET_SPACING,
-    #    patch_size=PATCH_SIZE,
-    #    foreground_margin=FOREGROUND_MARGIN,
-    #)
-    #train_transform = build_train_transform(
-    #    target_spacing=TARGET_SPACING,
-    #    patch_size=PATCH_SIZE,
-    #    foreground_margin=FOREGROUND_MARGIN,
-    #)
+    preprocess_transform = build_val_transform(
+        target_spacing=TARGET_SPACING,
+        patch_size=PATCH_SIZE,
+        use_foreground_crop=USE_FOREGROUND_CROP,
+        foreground_margin=FOREGROUND_MARGIN,
+    )
+    train_transform = build_train_transform(
+        target_spacing=TARGET_SPACING,
+        patch_size=PATCH_SIZE,
+        use_foreground_crop=USE_FOREGROUND_CROP,
+        foreground_margin=FOREGROUND_MARGIN,
+    )
 
     warnings = 0
     reports: list[dict[str, object]] = []
@@ -122,12 +129,12 @@ def main() -> None:
         aug_label = np.asarray(augmented["label"])[0]
 
         case_warnings: list[str] = []
-        if processed_image.shape != PATCH_SIZE:
-            case_warnings.append("wrong image shape")
-        if processed_label.shape != PATCH_SIZE:
-            case_warnings.append("wrong label shape")
         if processed_image.shape != processed_label.shape:
             case_warnings.append("image/label shape mismatch")
+        if processed_image.shape[0] < PATCH_SIZE[0] or processed_image.shape[1] < PATCH_SIZE[1]:
+            case_warnings.append("processed image is smaller than pad size")
+        if processed_label.shape[0] < PATCH_SIZE[0] or processed_label.shape[1] < PATCH_SIZE[1]:
+            case_warnings.append("processed label is smaller than pad size")
         if sorted(np.unique(processed_label).astype(int).tolist()) != sorted(np.unique(raw_label).astype(int).tolist()):
             case_warnings.append("label values changed")
         if np.count_nonzero(raw_label) > 0 and np.count_nonzero(processed_label) == 0:
