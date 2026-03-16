@@ -1,14 +1,12 @@
 from pathlib import Path
 
 from config import (
-    foreground_margin_2d,
     include_background_slices_2d,
     min_label_pixels_2d,
     patch_size_2d,
     preprocessed_2d_path,
     seed_2d,
     target_spacing_2d,
-    use_foreground_crop_2d,
 )
 
 FOLD = 0
@@ -21,8 +19,6 @@ SEED = seed_2d
 
 PATCH_SIZE = patch_size_2d
 TARGET_SPACING = target_spacing_2d
-USE_FOREGROUND_CROP = use_foreground_crop_2d
-FOREGROUND_MARGIN = foreground_margin_2d
 INCLUDE_BACKGROUND_SLICES = include_background_slices_2d
 MIN_LABEL_PIXELS = min_label_pixels_2d
 

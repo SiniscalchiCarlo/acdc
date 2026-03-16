@@ -71,7 +71,6 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
     expected = {
         "target_spacing": list(cfg.TARGET_SPACING),
         "patch_size": list(cfg.PATCH_SIZE),
-        "use_foreground_crop": cfg.USE_FOREGROUND_CROP,
         "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
         "min_label_pixels": cfg.MIN_LABEL_PIXELS,
     }
@@ -208,26 +207,18 @@ def main() -> None:
         train_transform = build_train_transform(
             target_spacing=cfg.TARGET_SPACING,
             patch_size=cfg.PATCH_SIZE,
-            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
-            foreground_margin=cfg.FOREGROUND_MARGIN,
         )
         val_transform = build_val_transform(
             target_spacing=cfg.TARGET_SPACING,
             patch_size=cfg.PATCH_SIZE,
-            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
-            foreground_margin=cfg.FOREGROUND_MARGIN,
         )
         collate_fn = None
     else:
         train_transform = build_preprocessed_train_transform(
             patch_size=cfg.PATCH_SIZE,
-            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
-            foreground_margin=cfg.FOREGROUND_MARGIN,
         )
         val_transform = build_preprocessed_val_transform(
             patch_size=cfg.PATCH_SIZE,
-            use_foreground_crop=cfg.USE_FOREGROUND_CROP,
-            foreground_margin=cfg.FOREGROUND_MARGIN,
         )
         collate_fn = pad_list_data_collate
 

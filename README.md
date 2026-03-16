@@ -30,18 +30,17 @@ Because MRI don't have an absolute scale and depends on the settings of the mach
 we need to do intensity normalization. 
 Also give faster convergence for the model because ....
 
-3. CROPPING
-....
+3. PADDING TO FIXED INPUT SIZE
+After slice extraction and in-plane resampling, tensors are padded to the configured
+`patch_size_2d` so the network sees a stable input size without applying foreground crop.
 
 - 4. DATA AUGMENTATION
 
 TODO:
-- choose cropping
 - check 1.3-1.7mm
 - do we need to keep Orientationd in build_preprocess_transform function
 - in resamplingd bilinear/nearest/other for the image??
 - complete ... in 2. INTENSITY NORMALIZATION
-- 3. CROPPING motivation
 - choose pad dimension based on desired input unet (SpatialPadD build_process_transform)
 - 4. AUGMENTATION motivation
 - visualization

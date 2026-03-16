@@ -21,14 +21,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config import (
-    foreground_margin_2d,
     patch_size_2d,
     preprocess_qc_limit_2d,
     preprocess_qc_output_figures_2d,
     preprocess_qc_output_json_2d,
     seed_2d,
     target_spacing_2d,
-    use_foreground_crop_2d,
 )
 from src.load_data_2D import build_acdc_list
 from src.transforms_2D import build_train_transform, build_val_transform
@@ -37,8 +35,6 @@ LIMIT = preprocess_qc_limit_2d
 SEED = seed_2d
 TARGET_SPACING = target_spacing_2d
 PATCH_SIZE = patch_size_2d
-USE_FOREGROUND_CROP = use_foreground_crop_2d
-FOREGROUND_MARGIN = foreground_margin_2d
 
 OUTPUT_JSON = Path(preprocess_qc_output_json_2d)
 OUTPUT_FIGURES = Path(preprocess_qc_output_figures_2d)
@@ -92,14 +88,10 @@ def main() -> None:
     preprocess_transform = build_val_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
-        use_foreground_crop=USE_FOREGROUND_CROP,
-        foreground_margin=FOREGROUND_MARGIN,
     )
     train_transform = build_train_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
-        use_foreground_crop=USE_FOREGROUND_CROP,
-        foreground_margin=FOREGROUND_MARGIN,
     )
 
     warnings = 0

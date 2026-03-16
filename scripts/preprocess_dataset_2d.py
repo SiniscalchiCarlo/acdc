@@ -12,21 +12,17 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config import (
-    foreground_margin_2d,
     include_background_slices_2d,
     min_label_pixels_2d,
     patch_size_2d,
     preprocessed_2d_path,
     target_spacing_2d,
-    use_foreground_crop_2d,
 )
 from src.load_data_2D import build_acdc_list
 from src.transforms_2D import build_val_transform
 
 TARGET_SPACING = target_spacing_2d
 PATCH_SIZE = patch_size_2d
-USE_FOREGROUND_CROP = use_foreground_crop_2d
-FOREGROUND_MARGIN = foreground_margin_2d
 INCLUDE_BACKGROUND_SLICES = include_background_slices_2d
 MIN_LABEL_PIXELS = min_label_pixels_2d
 
@@ -40,8 +36,6 @@ def main() -> None:
     transform = build_val_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
-        use_foreground_crop=USE_FOREGROUND_CROP,
-        foreground_margin=FOREGROUND_MARGIN,
     )
 
     output_dir = Path(preprocessed_2d_path)
@@ -74,8 +68,6 @@ def main() -> None:
         "config": {
             "target_spacing": list(TARGET_SPACING),
             "patch_size": list(PATCH_SIZE),
-            "use_foreground_crop": USE_FOREGROUND_CROP,
-            "foreground_margin": FOREGROUND_MARGIN,
             "include_background_slices": INCLUDE_BACKGROUND_SLICES,
             "min_label_pixels": MIN_LABEL_PIXELS,
             "output_dir": str(output_dir),

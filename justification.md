@@ -46,8 +46,8 @@ Why:
 We now keep a visualization script to inspect raw and preprocessed overlays before trusting training metrics.
 
 Why:
-- Numeric summaries can show that shapes and labels are preserved, but they do not reveal whether anatomy looks distorted after orientation, resampling, or cropping.
-- Overlay figures make it easier to catch misalignment between image and label, over-aggressive cropping, or visually implausible interpolation artifacts.
+- Numeric summaries can show that shapes and labels are preserved, but they do not reveal whether anatomy looks distorted after orientation or resampling.
+- Overlay figures make it easier to catch misalignment between image and label or visually implausible interpolation artifacts.
 
 Current workflow:
 - Use `scripts/preprocess_qc.py` for numeric checks.
@@ -63,19 +63,13 @@ Why augmentation needs its own visualization:
 ### Train/validation preprocessing mismatch
 Training and validation originally used different `z` spacing policies. This was a correctness issue because validation would no longer reflect the training data distribution. The code was updated so both paths now default to the same semi-isotropic spacing policy.
 
-### Cropping is still loose
-Current QC suggests that image-based foreground cropping is removing obvious empty space, but not tightly localizing the heart.
+### No foreground crop in the active pipeline
+The active 2D pipeline does not apply image-based foreground cropping.
 
-Evidence from the 20-case QC run:
-- Processed shape summary: `min [206, 213, 16]`, `median [253.5, 279, 16]`, `max [319, 319, 16]`
-- Processed label bbox summary: `min [55, 55, 6]`, `median [84, 81.5, 9]`, `max [122, 100, 16]`
-- Processed foreground fraction: `min 0.007761`, `median 0.025005`, `max 0.051205`
-
-Interpretation:
-- Only about `0.8%-5.1%` of the processed tensor is label foreground.
-- This is acceptable for a first pass, but it indicates a lot of background is still present.
-- The heart itself is much smaller than the processed tensor in `x/y`, so image-based foreground cropping is mainly isolating the torso, not the cardiac region.
-- The current training patch size `192 x 192 x 16` appears large enough to contain the observed label boxes with margin, but this should eventually be validated on the full dataset and against validation performance.
+Why:
+- The available crop heuristic was not tightly localizing the heart; it mostly removed empty margins around the torso.
+- Keeping a single no-crop path avoids train/preprocess drift and makes offline preprocessing manifests easier to validate.
+- Padding to a fixed `patch_size_2d` is enough to keep model inputs consistent for the current baseline.
 
 ## What To Measure Next
 - Label bounding-box size after preprocessing across the dataset
@@ -84,7 +78,7 @@ Interpretation:
   - baseline loading only
   - `+ normalization`
   - `+ normalization + resampling`
-  - `+ normalization + resampling + crop/pad`
+  - `+ normalization + resampling + pad`
 
 ## Baseline Training Plan
 We now keep a minimal training baseline to test whether the current preprocessing is good enough in practice.
@@ -92,7 +86,7 @@ We now keep a minimal training baseline to test whether the current preprocessin
 Why a baseline is needed before more preprocessing changes:
 - Geometry checks can show that the pipeline is consistent, but they cannot show whether the model learns useful segmentations.
 - A safe but loose preprocessing pipeline is still a valid baseline if it trains stably and gives sensible validation Dice.
-- Future crop or augmentation changes should be compared against one fixed reference setup rather than against intuition.
+- Future preprocessing or augmentation changes should be compared against one fixed reference setup rather than against intuition.
 
 Why the baseline is intentionally simple:
 - One architecture: a modest 3D UNet

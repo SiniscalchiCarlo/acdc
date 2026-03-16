@@ -8,7 +8,6 @@ import numpy as np
 from monai.config import KeysCollection
 from monai.transforms import (
     Compose,
-    CropForegroundd,
     DivisiblePadd,
     EnsureChannelFirstd,
     EnsureTyped,
@@ -27,9 +26,7 @@ from monai.transforms import (
 )
 
 DEFAULT_TARGET_SPACING_2D = (1.25, 1.25, -1.0)
-DEFAULT_PATCH_SIZE_2D = (192, 192)
-DEFAULT_USE_FOREGROUND_CROP_2D = True
-DEFAULT_FOREGROUND_MARGIN_2D = 16
+DEFAULT_PATCH_SIZE_2D = (320, 320)
 
 
 class ExtractSliceByIndexd(MapTransform):
@@ -78,8 +75,6 @@ class LoadPreprocessedSliceD(Transform):
 def build_preprocess_transform(
     target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
-    use_foreground_crop: bool = DEFAULT_USE_FOREGROUND_CROP_2D,
-    foreground_margin: int = DEFAULT_FOREGROUND_MARGIN_2D,
 ) -> Compose:
     """
     Build deterministic preprocessing for slice-based 2D training.
@@ -99,15 +94,6 @@ def build_preprocess_transform(
         NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
         ExtractSliceByIndexd(keys=["image", "label"], index_key="slice_idx"),
     ]
-    if use_foreground_crop:
-        transforms.append(
-            CropForegroundd(
-                keys=["image", "label"],
-                source_key="image",
-                margin=foreground_margin,
-                allow_smaller=True,
-            )
-        )
     transforms.extend(
         [
             SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
@@ -121,16 +107,12 @@ def build_preprocess_transform(
 def build_train_transform(
     target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
-    use_foreground_crop: bool = DEFAULT_USE_FOREGROUND_CROP_2D,
-    foreground_margin: int = DEFAULT_FOREGROUND_MARGIN_2D,
 ) -> Compose:
     """Build 2D training transforms that output `[C, H, W]` tensors for a UNet."""
 
     preprocess = build_preprocess_transform(
         target_spacing=target_spacing,
         patch_size=patch_size,
-        use_foreground_crop=use_foreground_crop,
-        foreground_margin=foreground_margin,
     )
 
     augment = Compose(
@@ -166,40 +148,23 @@ def build_train_transform(
 def build_val_transform(
     target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
-    use_foreground_crop: bool = DEFAULT_USE_FOREGROUND_CROP_2D,
-    foreground_margin: int = DEFAULT_FOREGROUND_MARGIN_2D,
 ) -> Compose:
     """Build deterministic validation transforms for slice-based 2D inference."""
     return build_preprocess_transform(
         target_spacing=target_spacing,
         patch_size=patch_size,
-        use_foreground_crop=use_foreground_crop,
-        foreground_margin=foreground_margin,
     )
 
 
 def build_preprocessed_train_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
-    use_foreground_crop: bool = DEFAULT_USE_FOREGROUND_CROP_2D,
-    foreground_margin: int = DEFAULT_FOREGROUND_MARGIN_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and optionally crop before final padding."""
-    post_load: list[Transform] = []
-    if use_foreground_crop:
-        post_load.append(
-            CropForegroundd(
-                keys=["image", "label"],
-                source_key="image",
-                margin=foreground_margin,
-                allow_smaller=True,
-            )
-        )
+    """Load offline-preprocessed 2D slices and apply online augmentation."""
     return Compose(
         [
             LoadPreprocessedSliceD(),
             EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
             EnsureTyped(keys=["image", "label"]),
-            *post_load,
             RandAffined(
                 keys=["image", "label"],
                 prob=0.7,
@@ -230,24 +195,13 @@ def build_preprocessed_train_transform(
 
 def build_preprocessed_val_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
-    use_foreground_crop: bool = DEFAULT_USE_FOREGROUND_CROP_2D,
-    foreground_margin: int = DEFAULT_FOREGROUND_MARGIN_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and optionally crop before final padding."""
+    """Load offline-preprocessed 2D slices and apply final padding."""
     transforms: list[Transform] = [
         LoadPreprocessedSliceD(),
         EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
         EnsureTyped(keys=["image", "label"]),
     ]
-    if use_foreground_crop:
-        transforms.append(
-            CropForegroundd(
-                keys=["image", "label"],
-                source_key="image",
-                margin=foreground_margin,
-                allow_smaller=True,
-            )
-        )
     transforms.extend(
         [
             SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
