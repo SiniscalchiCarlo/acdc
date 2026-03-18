@@ -10,7 +10,7 @@ import torch
 from monai.data import decollate_batch, pad_list_data_collate
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
-from monai.networks.nets import UNet
+from monai.networks.nets import UNet, attentionunet, segresnet
 from monai.transforms import AsDiscrete, Compose, EnsureType
 
 # Allow the script to be executed from the repository root without installing the package.
@@ -52,6 +52,38 @@ def build_model() -> UNet:
         channels=(16, 32, 64, 128, 256),
         strides=(2, 2, 2, 2),
         num_res_units=2,
+    )
+
+def build_model() -> UNet:
+    """Construct a modest 2D UNet for baseline slice-wise segmentation."""
+    return UNet(
+        spatial_dims=2,
+        in_channels=1,
+        out_channels=4,
+        channels=(16, 32, 64, 128, 256),
+        strides=(2, 2, 2, 2),
+        num_res_units=2,
+    )
+
+def build_model_attention() -> attentionunet:
+    """Construct a modest 2D UNet for baseline slice-wise segmentation."""
+    return attentionunet(
+        spatial_dims=2,
+        in_channels=1,
+        out_channels=4,
+        channels=(16, 32, 64, 128, 256),
+        strides=(2, 2, 2, 2),
+    )
+
+def build_model_residual() -> segresnet:
+    """Construct a modest 2D SegResNet for baseline slice-wise segmentation."""
+    return segresnet(
+        spatial_dims=2,
+        in_channels=1,
+        out_channels=4,          # ACDC usually has 4 classes: BG, RV, Myo, LV
+        init_filters=16,         # Initial filter count (maps to your first channel)
+        blocks_down=(1, 2, 2, 4), # Defines how many residual blocks per level
+        blocks_up=(1, 1, 1),      # Typically 1 block per upsampling level
     )
 
 
