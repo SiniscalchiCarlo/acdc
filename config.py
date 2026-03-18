@@ -2,7 +2,7 @@ dataset_path = "/home/carlo/Download/ACDC/database/training"
 preprocessed_2d_path = "/home/carlo/Projects/UT/acdc/artifacts/preprocessed_2d"
 
 target_spacing_2d = (1.25, 1.25, -1.0)
-patch_size_2d = (192, 192)
+patch_size_2d = (320, 320)
 include_background_slices_2d = True
 min_label_pixels_2d = 1
 seed_2d = 42

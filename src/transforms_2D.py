@@ -175,8 +175,6 @@ def build_preprocessed_train_transform(
                 mode=("bilinear", "nearest"),
                 padding_mode="border",
             ),
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
             RandShiftIntensityd(keys=["image"], prob=0.5, offsets=0.1),
             RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.7, 1.5)),
             RandGaussianNoised(keys=["image"], prob=0.2, mean=0.0, std=0.01),
