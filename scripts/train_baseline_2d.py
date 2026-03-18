@@ -42,17 +42,21 @@ def get_device() -> torch.device:
         return torch.device("cuda")
     return torch.device("cpu")
 
-
-def build_model() -> UNet:
-    """Construct a modest 2D UNet for baseline slice-wise segmentation."""
-    return UNet(
-        spatial_dims=2,
-        in_channels=1,
-        out_channels=4,
-        channels=(16, 32, 64, 128, 256),
-        strides=(2, 2, 2, 2),
-        num_res_units=2,
-    )
+def get_model(config):
+    model_name = config.MODEL()    
+    
+    if model_name == 'UNET':
+        return build_model()
+    
+    elif model_name == 'ATTUNET':
+        return build_model_attention()
+    
+    elif model_name == 'SEGRESNET':
+        return build_model_residual()
+    
+    else:
+        available = ["UNET", "ATTENTIONUNET", "RESUNET"]
+        raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
 
 def build_model() -> UNet:
     """Construct a modest 2D UNet for baseline slice-wise segmentation."""
@@ -66,7 +70,7 @@ def build_model() -> UNet:
     )
 
 def build_model_attention() -> attentionunet:
-    """Construct a modest 2D UNet for baseline slice-wise segmentation."""
+    """Construct attention UNet without residual units possible."""
     return attentionunet(
         spatial_dims=2,
         in_channels=1,
@@ -76,14 +80,14 @@ def build_model_attention() -> attentionunet:
     )
 
 def build_model_residual() -> segresnet:
-    """Construct a modest 2D SegResNet for baseline slice-wise segmentation."""
+    """Construct top-end SegResNet."""
     return segresnet(
         spatial_dims=2,
         in_channels=1,
-        out_channels=4,          # ACDC usually has 4 classes: BG, RV, Myo, LV
-        init_filters=16,         # Initial filter count (maps to your first channel)
-        blocks_down=(1, 2, 2, 4), # Defines how many residual blocks per level
-        blocks_up=(1, 1, 1),      # Typically 1 block per upsampling level
+        out_channels=4,   
+        init_filters=16,       
+        blocks_down=(1, 2, 2, 4),
+        blocks_up=(1, 1, 1),
     )
 
 
@@ -267,8 +271,7 @@ def main() -> None:
         pin_memory=cfg.PIN_MEMORY,
         collate_fn=collate_fn,
     )
-
-    model = build_model().to(device)
+    model = get_model(cfg).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
