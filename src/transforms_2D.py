@@ -25,8 +25,10 @@ from monai.transforms import (
     Transform,
 )
 
-DEFAULT_TARGET_SPACING_2D = (1.25, 1.25, -1.0)
-DEFAULT_PATCH_SIZE_2D = (320, 320)
+from config import patch_size_2d, target_spacing_2d
+
+DEFAULT_TARGET_SPACING_2D = target_spacing_2d
+DEFAULT_PATCH_SIZE_2D = patch_size_2d
 
 
 class ExtractSliceByIndexd(MapTransform):
@@ -44,15 +46,7 @@ class ExtractSliceByIndexd(MapTransform):
         slice_idx = int(d[self.index_key])
         for key in self.key_iterator(d):
             tensor = d[key]
-            if tensor.ndim != 4:
-                raise ValueError(f"Expected [C, H, W, D] tensor for key '{key}', got shape {tuple(tensor.shape)}")
-
-            depth = int(tensor.shape[-1])
-            if depth < 1:
-                raise ValueError(f"Cannot extract a slice from empty depth for key '{key}'")
-
-            clamped_idx = max(0, min(slice_idx, depth - 1))
-            d[key] = tensor[..., clamped_idx]
+            d[key] = tensor[..., slice_idx]
 
         return d
 
@@ -72,12 +66,14 @@ class LoadPreprocessedSliceD(Transform):
         return d
 
 
-def build_preprocess_transform(
+
+def build_preprocessing_transform(
     target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
     """
     Build deterministic preprocessing for slice-based 2D training.
+    This preprocessing is performed in advance to speed up training time.
 
     The source files remain 3D ACDC volumes, but each dataset item carries a
     `slice_idx` and is converted into a `[C, H, W]` tensor before augmentation.
@@ -104,18 +100,11 @@ def build_preprocess_transform(
     return Compose(transforms)
 
 
-def build_train_transform(
-    target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
+def build_preprocessed_augment_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Build 2D training transforms that output `[C, H, W]` tensors for a UNet."""
-
-    preprocess = build_preprocess_transform(
-        target_spacing=target_spacing,
-        patch_size=patch_size,
-    )
-
-    augment = Compose(
+    """Apply online augmentation to already-loaded preprocessed 2D slices."""
+    return Compose(
         [
             RandAffined(
                 keys=["image", "label"],
@@ -127,8 +116,6 @@ def build_train_transform(
                 mode=("bilinear", "nearest"),
                 padding_mode="border",
             ),
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
-            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
             RandShiftIntensityd(keys=["image"], prob=0.5, offsets=0.1),
             RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.7, 1.5)),
             RandGaussianNoised(keys=["image"], prob=0.2, mean=0.0, std=0.01),
@@ -143,19 +130,12 @@ def build_train_transform(
             EnsureTyped(keys=["image", "label"]),
         ]
     )
-    return Compose([preprocess, augment])
-
-def build_val_transform(
-    target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
-    patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
-) -> Compose:
-    """Build deterministic validation transforms for slice-based 2D inference."""
-    return build_preprocess_transform(
-        target_spacing=target_spacing,
-        patch_size=patch_size,
-    )
 
 
+
+# Transforms used in the dataloader (on the already preprocessed data)
+# Augmentation (build_preprocessed_augment_transform) is not performed in advance and is applied
+# in the build_preprocessed_train_transform
 def build_preprocessed_train_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
@@ -165,28 +145,7 @@ def build_preprocessed_train_transform(
             LoadPreprocessedSliceD(),
             EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
             EnsureTyped(keys=["image", "label"]),
-            RandAffined(
-                keys=["image", "label"],
-                prob=0.7,
-                rotate_range=np.deg2rad(20.0),
-                scale_range=(0.10, 0.10),
-                translate_range=(12, 12),
-                shear_range=(0.05, 0.05),
-                mode=("bilinear", "nearest"),
-                padding_mode="border",
-            ),
-            RandShiftIntensityd(keys=["image"], prob=0.5, offsets=0.1),
-            RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.7, 1.5)),
-            RandGaussianNoised(keys=["image"], prob=0.2, mean=0.0, std=0.01),
-            RandGaussianSmoothd(
-                keys=["image"],
-                prob=0.15,
-                sigma_x=(0.5, 1.0),
-                sigma_y=(0.5, 1.0),
-            ),
-            SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
-            DivisiblePadd(keys=["image", "label"], k=16),
-            EnsureTyped(keys=["image", "label"]),
+            build_preprocessed_augment_transform(patch_size=patch_size),
         ]
     )
 

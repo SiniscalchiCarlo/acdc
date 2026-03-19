@@ -9,7 +9,7 @@ import nibabel as nib
 import numpy as np
 from monai.data import CacheDataset, DataLoader
 from monai.utils import set_determinism
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GroupShuffleSplit
 
 from config import dataset_path
 
@@ -29,27 +29,16 @@ def parse_info_cfg(info_path: Path):
 
 def split_by_patient(
     items: list[dict[str, Any]],
-    n_splits: int = 5,
-    fold: int = 0,
+    val_size: float = 0.2,
+    seed: int = 42,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Split slice-level items with GroupKFold so patient slices never leak across folds."""
-    if not items:
-        raise ValueError("items must not be empty")
-    if n_splits < 2:
-        raise ValueError("n_splits must be >= 2")
-    if fold < 0 or fold >= n_splits:
-        raise ValueError(f"fold must be in [0, {n_splits - 1}]")
+    """Split slice-level items by patient so slices never leak across train and validation."""
 
     groups = np.asarray([item["patient"] for item in items])
-    unique_groups = np.unique(groups)
-    if len(unique_groups) < n_splits:
-        raise ValueError(
-            f"Need at least {n_splits} unique patients for GroupKFold, found {len(unique_groups)}"
-        )
 
     indices = np.arange(len(items))
-    splits = list(GroupKFold(n_splits=n_splits).split(indices, y=None, groups=groups))
-    train_idx, val_idx = splits[fold]
+    splitter = GroupShuffleSplit(n_splits=1, test_size=val_size, random_state=seed)
+    train_idx, val_idx = next(splitter.split(indices, y=None, groups=groups))
 
     train_items = [items[idx] for idx in train_idx]
     val_items = [items[idx] for idx in val_idx]
@@ -93,13 +82,12 @@ def build_acdc_list(
 
 def build_preprocessed_2d_list(
     preprocessed_root: str | Path,
-    manifest_name: str = "manifest.json",
 ) -> list[dict[str, Any]]:
     """Load a preprocessed 2D dataset manifest from disk."""
-    manifest = load_preprocessed_2d_manifest(preprocessed_root=preprocessed_root, manifest_name=manifest_name)
+    manifest = load_preprocessed_2d_manifest(preprocessed_root=preprocessed_root)
     items = manifest.get("items", [])
     if not items:
-        raise RuntimeError(f"No items found in preprocessed manifest: {Path(preprocessed_root) / manifest_name}")
+        raise RuntimeError(f"No items found in preprocessed manifest: {Path(preprocessed_root) / 'manifest.json'}")
 
     root = Path(preprocessed_root)
     normalized_items: list[dict[str, Any]] = []
@@ -115,11 +103,10 @@ def build_preprocessed_2d_list(
 
 def load_preprocessed_2d_manifest(
     preprocessed_root: str | Path,
-    manifest_name: str = "manifest.json",
 ) -> dict[str, Any]:
     """Load and return the full preprocessed manifest, including stored config."""
     root = Path(preprocessed_root)
-    manifest_path = root / manifest_name
+    manifest_path = root / "manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"Preprocessed manifest not found: {manifest_path}")
 
@@ -139,15 +126,8 @@ def _build_slice_items(
     image_path = patient_dir / f"{patient_dir.name}_frame{frame_idx:02d}.nii.gz"
     label_path = patient_dir / f"{patient_dir.name}_frame{frame_idx:02d}_gt.nii.gz"
 
-    if not image_path.exists():
-        raise FileNotFoundError(f"Missing image file: {image_path}")
-    if not label_path.exists():
-        raise FileNotFoundError(f"Missing label file: {label_path}")
-
     label_nii = nib.load(str(label_path))
     label_data = np.asarray(label_nii.dataobj)
-    if label_data.ndim != 3:
-        raise ValueError(f"Expected a 3D label volume for {label_path}, got shape {label_data.shape}")
 
     slice_items: list[dict[str, Any]] = []
     for slice_idx in range(label_data.shape[-1]):
