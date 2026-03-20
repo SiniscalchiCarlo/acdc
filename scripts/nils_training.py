@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from monai.data import pad_list_data_collate
-
+import numpy as np
 
 # Allow the script to be executed from the repository root without installing the package.
 REPO_ROOT = Path(__file__).resolve().parents[1]
