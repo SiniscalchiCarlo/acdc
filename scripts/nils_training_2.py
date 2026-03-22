@@ -69,6 +69,8 @@ def init_wandb_run(config) -> Any | None:
                 "batch_size": config.BATCH_SIZE,
                 "lr": config.LR,
                 "weight_decay": config.WEIGHT_DECAY,
+                "lambda_dice": config.LAMBDA_DICE,
+                "lambda_ce": config.LAMBDA_CE,
                 "target_spacing": list(config.TARGET_SPACING),
                 "patch_size": list(config.PATCH_SIZE),
                 "preprocessed_root": None if config.PREPROCESSED_ROOT is None else str(config.PREPROCESSED_ROOT),
@@ -385,7 +387,12 @@ def main() -> None:
         patience=cfg.SCHEDULER_PATIENCE,
         min_lr=cfg.SCHEDULER_MIN_LR,
     )
-    loss_fn = DiceCELoss(to_onehot_y=True, softmax=True)
+    loss_fn = DiceCELoss(
+    to_onehot_y=True,
+    softmax=True,
+    lambda_dice=cfg.LAMBDA_DICE,
+    lambda_ce=cfg.LAMBDA_CE,
+)
     #Maybe use focal loss?
     best_val_dice = -1.0
     best_epoch = 0

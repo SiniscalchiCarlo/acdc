@@ -95,6 +95,12 @@ SCHEDULER_FACTOR = 0.5
 SCHEDULER_MIN_LR = 1e-6
 
 # -----------------------------
+# Loss function
+# -----------------------------
+LAMBDA_DICE = 1.0  # weight of Dice loss component
+LAMBDA_CE = 1.0    # weight of Cross Entropy loss component
+
+# -----------------------------
 # Debug / limits
 # -----------------------------
 # Limit number of training batches per epoch (useful for quick debugging). None = no limit.
