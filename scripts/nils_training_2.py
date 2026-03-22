@@ -14,6 +14,7 @@ from monai.metrics import DiceMetric
 from monai.networks.nets import UNet, AttentionUnet, SegResNet
 from monai.transforms import AsDiscrete, Compose, EnsureType
 from tqdm import tqdm
+import wandb
 
 # Allow the script to be executed from the repository root without installing the package.
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -532,6 +533,17 @@ def main() -> None:
             wandb_run.summary["best_val_loss"] = float(best_metrics["val_loss"])
             wandb_run.summary["best_train_loss"] = float(best_metrics["train_loss"])
         wandb_run.summary["model_path"] = str(cfg.MODEL_OUTPUT)
+        
+        # Upload model weights to wandb
+        artifact = wandb.Artifact(
+        name=f"model-{cfg.MODEL.lower()}",
+        type="model",
+        description=f"Best {cfg.MODEL} checkpoint from run {wandb_run.name}",
+        metadata=best_metrics,
+        )
+        artifact.add_file(str(cfg.MODEL_OUTPUT))
+        wandb_run.log_artifact(artifact)
+
         wandb_run.finish()
         print("W&B run finished.")
 
