@@ -1,4 +1,5 @@
 import optuna
+from optuna.pruners import MedianPruner
 import sys
 import torch
 from pathlib import Path
@@ -40,12 +41,19 @@ collate_fn = pad_list_data_collate
 def objective(trial):
     lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
-    batch_size = trial.suggest_categorical("batch_size", [8, 16, 32])
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 40])
+    lambda_dice = trial.suggest_float("lambda_dice", 0.3, 1.0)
+    lambda_ce = trial.suggest_float("lambda_ce", 0.3, 1.0)
 
     device = get_device()
     model = get_model(cfg).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    loss_fn = DiceCELoss(to_onehot_y=True, softmax=True)
+    loss_fn = DiceCELoss(
+        to_onehot_y=True,
+        softmax=True,
+        lambda_dice=lambda_dice,
+        lambda_ce=lambda_ce,
+    )
 
     train_loader, val_loader = build_loaders(
         train_items=train_items,
@@ -63,20 +71,24 @@ def objective(trial):
 
     for epoch in range(10):
         train_one_epoch(model, train_loader, optimizer, loss_fn, device, max_batches=None)
+        val_metrics = validate(model, val_loader, loss_fn, device, max_batches=None)
+        trial.report(val_metrics["val_dice"], epoch)
+        if trial.should_prune():
+            raise optuna.exceptions.TrialPruned()
 
-    val_metrics = validate(model, val_loader, loss_fn, device, max_batches=None)
     return val_metrics["val_dice"]
 
 
 if __name__ == "__main__":
     storage = "sqlite:///optuna_study.db"
     study = optuna.create_study(
-        direction="maximize", # Maximize Dice score
+        direction="maximize",
         storage=storage,
         study_name="acdc_segmentation",
         load_if_exists=True,
+        pruner=MedianPruner(n_startup_trials=5, n_warmup_steps=3),
     )
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=50)
 
     print("Best trial:")
     print(f"  val_dice: {study.best_trial.value}")
