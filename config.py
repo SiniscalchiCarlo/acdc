@@ -1,7 +1,8 @@
 dataset_path = "C:\\Users\\Nils\\Documents\\Studie Nils\\Deep Learning 3D Images\\ACDC_data\\database\\training"
 # Path for desktop
-# preprocessed_2d_path = "C:\\Users\\Nils\\Documents\\Studie Nils\\Deep Learning 3D Images\\ACDC_data\\preprocessed_2d"
-preprocessed_2d_path = "C:\\Users\\nilss\\Desktop\\ACDC_Project\\preprocessed_2d"
+preprocessed_2d_path = "C:\\Users\\Nils\\Documents\\Studie Nils\\Deep Learning 3D Images\\ACDC_data\\preprocessed_2d"
+# Path for laptop
+# preprocessed_2d_path = "C:\\Users\\nilss\\Desktop\\ACDC_Project\\preprocessed_2d"
 
 target_spacing_2d = (1.25, 1.25, -1.0)
 patch_size_2d = (320, 320)

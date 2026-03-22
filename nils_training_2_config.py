@@ -53,7 +53,7 @@ MIN_LABEL_PIXELS = min_label_pixels_2d
 EPOCHS = 1
 
 # Number of samples per training batch.
-BATCH_SIZE = 32
+BATCH_SIZE = 40
 
 # Initial learning rate for the optimizer (Adam).
 LR = 1e-3
@@ -65,7 +65,7 @@ WEIGHT_DECAY = 1e-5
 # Dataloader / performance
 # -----------------------------
 # Number of subprocesses for DataLoader workers.
-NUM_WORKERS = 2
+NUM_WORKERS = 10
 
 # If True, DataLoader will use pinned memory to accelerate CUDA transfers.
 PIN_MEMORY = True
@@ -121,7 +121,7 @@ WANDB_ENABLED = True
 
 # W&B project and optional entity/team.
 WANDB_PROJECT = "acdc-segmentation"
-WANDB_ENTITY = None
+WANDB_ENTITY = "n-x-stuurop-university-of-twente"
 
 # W&B run name. Set to None to auto-generate.
 WANDB_RUN_NAME = None

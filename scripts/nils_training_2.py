@@ -177,8 +177,8 @@ def build_model_attention() -> AttentionUnet:
         spatial_dims=2,
         in_channels=1,
         out_channels=4,
-        # channels=(16, 32, 64, 128, 256),
-        channels=(32, 64, 128, 256, 512),
+        channels=(16, 32, 64, 128, 256),
+        # channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
     )
 
