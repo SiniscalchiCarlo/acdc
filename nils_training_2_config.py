@@ -112,3 +112,19 @@ OUTPUT = Path("artifacts") / "model_metrics" / "baseline_metrics_2d.json"
 
 # File path for saving the final model checkpoint (.pt).
 MODEL_OUTPUT = Path("artifacts") / "models" / "baseline_model_2d.pt"
+
+# -----------------------------
+# Weights & Biases logging
+# -----------------------------
+# Enable/disable W&B experiment tracking.
+WANDB_ENABLED = True
+
+# W&B project and optional entity/team.
+WANDB_PROJECT = "acdc-segmentation"
+WANDB_ENTITY = None
+
+# W&B run name. Set to None to auto-generate.
+WANDB_RUN_NAME = None
+
+# W&B mode: "online", "offline", or "disabled".
+WANDB_MODE = "online"

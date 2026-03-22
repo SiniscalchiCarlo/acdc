@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from typing import Any
 from pathlib import Path
 
 import numpy as np
@@ -35,6 +36,84 @@ from src.transforms_2D import (
 )
 
 CLASS_NAMES = ("rv", "myo", "lv")
+
+
+def init_wandb_run(config) -> Any | None:
+    """Initialize a Weights & Biases run when enabled in config."""
+    if not getattr(config, "WANDB_ENABLED", False):
+        return None
+
+    try:
+        import wandb
+    except ImportError:
+        print("W&B logging requested but package 'wandb' is not installed. Continuing without W&B.")
+        return None
+
+    run_name = getattr(config, "WANDB_RUN_NAME", None)
+    if isinstance(run_name, str) and not run_name.strip():
+        run_name = None
+
+    try:
+        run = wandb.init(
+            project=config.WANDB_PROJECT,
+            entity=getattr(config, "WANDB_ENTITY", None),
+            name=run_name,
+            mode=getattr(config, "WANDB_MODE", "online"),
+            dir=str(REPO_ROOT),
+            config={
+                "seed": config.SEED,
+                "fold": config.FOLD,
+                "n_splits": config.N_SPLITS,
+                "model": config.MODEL,
+                "epochs": config.EPOCHS,
+                "batch_size": config.BATCH_SIZE,
+                "lr": config.LR,
+                "weight_decay": config.WEIGHT_DECAY,
+                "target_spacing": list(config.TARGET_SPACING),
+                "patch_size": list(config.PATCH_SIZE),
+                "preprocessed_root": None if config.PREPROCESSED_ROOT is None else str(config.PREPROCESSED_ROOT),
+            },
+        )
+        print(f"W&B run initialized: {run.name}")
+        return run
+    except Exception as ex:
+        print(f"Failed to initialize W&B run: {ex}. Continuing without W&B.")
+        return None
+
+
+def log_wandb_epoch(
+    wandb_run: Any | None,
+    epoch: int,
+    train_loss: float,
+    learning_rate: float,
+    epoch_duration_sec: float,
+    samples_per_sec: float,
+    max_gpu_memory_mb: float | None,
+    val_metrics: dict[str, float | list[float]] | None,
+) -> None:
+    """Log epoch metrics to Weights & Biases if a run is active."""
+    if wandb_run is None:
+        return
+
+    payload: dict[str, float | int] = {
+        "epoch": epoch,
+        "train/loss": float(train_loss),
+        "train/lr": float(learning_rate),
+        "perf/epoch_duration_sec": float(epoch_duration_sec),
+        "perf/train_samples_per_sec": float(samples_per_sec),
+    }
+    if max_gpu_memory_mb is not None:
+        payload["perf/max_gpu_memory_mb"] = float(max_gpu_memory_mb)
+
+    if val_metrics is not None:
+        payload["val/loss"] = float(val_metrics["val_loss"])
+        payload["val/dice"] = float(val_metrics["val_dice"])
+        class_scores = list(val_metrics["val_dice_per_class"])
+        for idx, class_name in enumerate(CLASS_NAMES):
+            if idx < len(class_scores):
+                payload[f"val/dice_{class_name}"] = float(class_scores[idx])
+
+    wandb_run.log(payload, step=epoch)
 
 
 def get_device():
@@ -248,6 +327,7 @@ def main() -> None:
     """Train and validate a reproducible 2D baseline using config-only settings."""
     device = get_device()
     print_device_info(device)
+    wandb_run = init_wandb_run(cfg)
     torch.manual_seed(cfg.SEED)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.SEED)
@@ -375,12 +455,32 @@ def main() -> None:
                 f"time={epoch_duration_sec:.2f}s "
                 f"throughput={samples_per_sec:.2f} samples/s"
             )
+            log_wandb_epoch(
+                wandb_run=wandb_run,
+                epoch=epoch,
+                train_loss=train_loss,
+                learning_rate=float(optimizer.param_groups[0]["lr"]),
+                epoch_duration_sec=epoch_duration_sec,
+                samples_per_sec=samples_per_sec,
+                max_gpu_memory_mb=max_gpu_memory_mb,
+                val_metrics=val_metrics,
+            )
         else:
             print(
                 f"Epoch {epoch}: train_loss={train_loss:.4f} "
                 f"lr={current_lr:.6f} "
                 f"time={epoch_duration_sec:.2f}s "
                 f"throughput={samples_per_sec:.2f} samples/s"
+            )
+            log_wandb_epoch(
+                wandb_run=wandb_run,
+                epoch=epoch,
+                train_loss=train_loss,
+                learning_rate=current_lr,
+                epoch_duration_sec=epoch_duration_sec,
+                samples_per_sec=samples_per_sec,
+                max_gpu_memory_mb=max_gpu_memory_mb,
+                val_metrics=None,
             )
 
         if cfg.EARLY_STOP_PATIENCE > 0 and epochs_without_improvement >= cfg.EARLY_STOP_PATIENCE:
@@ -417,6 +517,16 @@ def main() -> None:
     cfg.OUTPUT.write_text(json.dumps(summary, indent=2))
     print(f"Saved metrics to: {cfg.OUTPUT}")
     print(f"Saved final model to: {cfg.MODEL_OUTPUT}")
+
+    if wandb_run is not None:
+        wandb_run.summary["best_epoch"] = int(best_epoch)
+        if best_metrics is not None:
+            wandb_run.summary["best_val_dice"] = float(best_metrics["val_dice"])
+            wandb_run.summary["best_val_loss"] = float(best_metrics["val_loss"])
+            wandb_run.summary["best_train_loss"] = float(best_metrics["train_loss"])
+        wandb_run.summary["model_path"] = str(cfg.MODEL_OUTPUT)
+        wandb_run.finish()
+        print("W&B run finished.")
 
 
 if __name__ == "__main__":
