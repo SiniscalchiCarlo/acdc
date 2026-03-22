@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from monai.data import decollate_batch, pad_list_data_collate
 from monai.losses import DiceCELoss
-from monai.metrics import DiceMetric
+from monai.metrics import DiceMetric, HausdorffDistanceMetric
 from monai.networks.nets import UNet, AttentionUnet, SegResNet
 from monai.transforms import AsDiscrete, Compose, EnsureType
 from tqdm import tqdm
@@ -111,10 +111,14 @@ def log_wandb_epoch(
     if val_metrics is not None:
         payload["val/loss"] = float(val_metrics["val_loss"])
         payload["val/dice"] = float(val_metrics["val_dice"])
-        class_scores = list(val_metrics["val_dice_per_class"])
+        payload["val/hd95"] = float(val_metrics["val_hd95"])
+        class_dice_scores = list(val_metrics["val_dice_per_class"])
+        class_hd95_scores = list(val_metrics["val_hd95_per_class"])
         for idx, class_name in enumerate(CLASS_NAMES):
-            if idx < len(class_scores):
-                payload[f"val/dice_{class_name}"] = float(class_scores[idx])
+            if idx < len(class_dice_scores):
+                payload[f"val/dice_{class_name}"] = float(class_dice_scores[idx])
+            if idx < len(class_hd95_scores):
+                payload[f"val/hd95_{class_name}"] = float(class_hd95_scores[idx])
 
     wandb_run.log(payload, step=epoch)
 
@@ -271,10 +275,12 @@ def validate(
     device: torch.device,
     max_batches: int | None,
 ) -> dict[str, float | list[float]]:
-    """Run slice-wise validation and return loss, mean Dice, and per-class Dice."""
+    """Run slice-wise validation and return loss, mean Dice, HD95, and per-class scores."""
     model.eval()
     mean_dice_metric = DiceMetric(include_background=False, reduction="mean")
     class_dice_metric = DiceMetric(include_background=False, reduction="mean_batch")
+    hd95_metric = HausdorffDistanceMetric(include_background=False, percentile=95, reduction="mean")
+    class_hd95_metric = HausdorffDistanceMetric(include_background=False, percentile=95, reduction="mean_batch")
     post_pred, post_label = build_post_transforms()
     losses: list[float] = []
 
@@ -290,19 +296,29 @@ def validate(
             label_list = [post_label(x) for x in decollate_batch(labels)]
             mean_dice_metric(y_pred=pred_list, y=label_list)
             class_dice_metric(y_pred=pred_list, y=label_list)
+            hd95_metric(y_pred=pred_list, y=label_list)
+            class_hd95_metric(y_pred=pred_list, y=label_list)
 
             if max_batches is not None and batch_idx >= max_batches:
                 break
 
     mean_dice = float(mean_dice_metric.aggregate().item())
-    class_scores = class_dice_metric.aggregate().detach().cpu().numpy().astype(float).tolist()
+    class_dice_scores = class_dice_metric.aggregate().detach().cpu().numpy().astype(float).tolist()
+    mean_hd95 = float(hd95_metric.aggregate().item())
+    class_hd95_scores = class_hd95_metric.aggregate().detach().cpu().numpy().astype(float).tolist()
+
     mean_dice_metric.reset()
     class_dice_metric.reset()
+    hd95_metric.reset()
+    class_hd95_metric.reset()
+
     mean_loss = float(np.mean(losses)) if losses else float("nan")
     return {
         "val_loss": mean_loss,
         "val_dice": mean_dice,
-        "val_dice_per_class": class_scores,
+        "val_dice_per_class": class_dice_scores,
+        "val_hd95": mean_hd95,
+        "val_hd95_per_class": class_hd95_scores,
     }
 
 
@@ -447,6 +463,8 @@ def main() -> None:
                     "val_loss": round(float(val_metrics["val_loss"]), 6),
                     "val_dice": round(float(val_metrics["val_dice"]), 6),
                     "val_dice_per_class": [round(float(score), 6) for score in list(val_metrics["val_dice_per_class"])],
+                    "val_hd95": round(float(val_metrics["val_hd95"]), 4),
+                    "val_hd95_per_class": [round(float(s), 4) for s in val_metrics["val_hd95_per_class"]],
                 }
                 best_epoch_duration_sec = round(epoch_duration_sec, 4)
                 best_epoch_throughput = round(samples_per_sec, 4)

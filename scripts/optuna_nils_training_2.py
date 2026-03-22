@@ -84,6 +84,7 @@ def objective(trial):
         train_one_epoch(model, train_loader, optimizer, loss_fn, device, max_batches=None)
         val_metrics = validate(model, val_loader, loss_fn, device, max_batches=None)
         trial.report(val_metrics["val_dice"], epoch)
+        trial.set_user_attr("val_hd95", val_metrics["val_hd95"])
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
 
@@ -103,15 +104,16 @@ if __name__ == "__main__":
     # Enqueue known good values as the first trial so Optuna
     # starts from a strong baseline before exploring further
     study.enqueue_trial({
-        "lr": 1e-3,             # current LR
-        "weight_decay": 1e-5,   # current weight decay
-        "batch_size": 40,       # current batch size
-        "lambda_dice": 1.0,     # current lambda_dice
-        "lambda_ce": 1.0,       # current lambda_ce
+        "lr": 1e-3,
+        "weight_decay": 1e-5,
+        "batch_size": 40,
+        "lambda_dice": 1.0,
+        "lambda_ce": 1.0,
     })
 
     study.optimize(objective, n_trials=50)
 
     print("Best trial:")
     print(f"  val_dice: {study.best_trial.value}")
+    print(f"  val_hd95: {study.best_trial.user_attrs.get('val_hd95', 'N/A')}")
     print(f"  Params: {study.best_trial.params}")
