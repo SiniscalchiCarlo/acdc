@@ -16,6 +16,7 @@ dependencies = [
     "torch",
     "torchvision",
     "torchaudio",
+    "optuna-dashboard>=0.20.0",
 ]
 
 [[tool.uv.index]]

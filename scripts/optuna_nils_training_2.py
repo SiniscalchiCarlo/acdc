@@ -30,6 +30,11 @@ from src.transforms_2D import (
 )
 import nils_training_2_config as cfg
 
+# -----------------------------
+# Warm start — path to best pretrained model checkpoint
+# -----------------------------
+PRETRAINED_MODEL_PATH = Path("artifacts") / "models" / "Baseline_ATTUNET.pt"
+
 # Build data once outside objective (no need to reload every trial)
 manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
 items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
@@ -47,6 +52,12 @@ def objective(trial):
 
     device = get_device()
     model = get_model(cfg).to(device)
+
+    # Load pretrained weights as warm start if checkpoint exists
+    if PRETRAINED_MODEL_PATH.exists():
+        checkpoint = torch.load(PRETRAINED_MODEL_PATH, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     loss_fn = DiceCELoss(
         to_onehot_y=True,
@@ -88,6 +99,17 @@ if __name__ == "__main__":
         load_if_exists=True,
         pruner=MedianPruner(n_startup_trials=5, n_warmup_steps=3),
     )
+
+    # Enqueue known good values as the first trial so Optuna
+    # starts from a strong baseline before exploring further
+    study.enqueue_trial({
+        "lr": 1e-3,             # current LR
+        "weight_decay": 1e-5,   # current weight decay
+        "batch_size": 40,       # current batch size
+        "lambda_dice": 1.0,     # current lambda_dice
+        "lambda_ce": 1.0,       # current lambda_ce
+    })
+
     study.optimize(objective, n_trials=50)
 
     print("Best trial:")
