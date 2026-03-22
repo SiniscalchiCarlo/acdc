@@ -26,7 +26,7 @@ N_SPLITS = 5
 # -----------------------------
 # Model choice string used by `get_model()` to construct the network.
 # Options: 'UNET' | 'ATTUNET' | 'SEGRESNET'
-MODEL = 'ATTUNET'
+MODEL = 'UNET'
 
 # -----------------------------
 # Data / preprocessing
@@ -50,7 +50,7 @@ MIN_LABEL_PIXELS = min_label_pixels_2d
 # Training hyperparameters
 # -----------------------------
 # Total number of training epochs to run.
-EPOCHS = 1
+EPOCHS = 100
 
 # Number of samples per training batch.
 BATCH_SIZE = 40
