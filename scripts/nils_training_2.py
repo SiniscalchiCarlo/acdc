@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from monai.data import decollate_batch, pad_list_data_collate
-from monai.losses import DiceCELoss
+from monai.losses import DiceCELoss, DiceFocalLoss
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
 from monai.networks.nets import UNet, AttentionUnet, SegResNet
 from monai.transforms import AsDiscrete, Compose, EnsureType
@@ -96,6 +96,7 @@ def init_wandb_run(config) -> Any | None:
                 "weight_decay": config.WEIGHT_DECAY,
                 "lambda_dice": config.LAMBDA_DICE,
                 "lambda_ce": config.LAMBDA_CE,
+                "loss_function": config.LOSS_FUNCTION,
                 "dynamic_class_weights": config.DYNAMIC_CLASS_WEIGHTS,
                 "target_spacing": list(config.TARGET_SPACING),
                 "patch_size": list(config.PATCH_SIZE),
@@ -251,15 +252,32 @@ def compute_class_weights(val_dice_per_class: list[float], device: torch.device)
     return torch.cat([background_weight, weights], dim=0).to(device)
 
 
-def build_loss_fn(class_weights: torch.Tensor) -> DiceCELoss:
-    """Build DiceCELoss with the given class weights."""
-    return DiceCELoss(
-        to_onehot_y=True,
-        softmax=True,
-        lambda_dice=cfg.LAMBDA_DICE,
-        lambda_ce=cfg.LAMBDA_CE,
-        weight=class_weights,
-    )
+def build_loss_fn(class_weights: torch.Tensor) -> torch.nn.Module:
+    """Build the loss function selected in config with the given class weights.
+
+    Supports 'DiceCE' and 'DiceFocal'. Raises ValueError for unknown options.
+    """
+    loss_name = getattr(cfg, "LOSS_FUNCTION", "DiceCE").strip()
+
+    if loss_name == "DiceCE":
+        return DiceCELoss(
+            to_onehot_y=True,
+            softmax=True,
+            lambda_dice=cfg.LAMBDA_DICE,
+            lambda_ce=cfg.LAMBDA_CE,
+            weight=class_weights,
+        )
+    elif loss_name == "DiceFocal":
+        return DiceFocalLoss(
+            to_onehot_y=True,
+            softmax=True,
+            lambda_dice=cfg.LAMBDA_DICE,
+            lambda_focal=cfg.LAMBDA_CE,  # reuse LAMBDA_CE as focal weight
+            weight=class_weights,
+        )
+    else:
+        available = ["DiceCE", "DiceFocal"]
+        raise ValueError(f"Invalid LOSS_FUNCTION '{loss_name}'. Choose from {available}")
 
 
 def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
@@ -464,9 +482,9 @@ def main() -> None:
     class_weights = torch.ones(4, dtype=torch.float32).to(device)
     loss_fn = build_loss_fn(class_weights)
 
-    # Log whether dynamic weighting is enabled
+    # Log startup info
+    print(f"Loss function: {cfg.LOSS_FUNCTION}")
     print(f"Dynamic class weighting: {'enabled' if cfg.DYNAMIC_CLASS_WEIGHTS else 'disabled'}")
-    # Maybe use focal loss?
 
     best_val_dice = -1.0
     best_epoch = 0

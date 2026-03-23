@@ -53,13 +53,15 @@ MIN_LABEL_PIXELS = min_label_pixels_2d
 EPOCHS = 100
 
 # Number of samples per training batch.
-BATCH_SIZE = 32
+# BATCH_SIZE = 32
+BATCH_SIZE = 40
 
 # Initial learning rate for the optimizer (Adam).
-LR = 7.4e-5
+# LR = 7.4e-5 # Optuna suggested value
+LR = 1e-3
 
 # Weight decay (L2 regularization) applied by the optimizer.
-WEIGHT_DECAY = 1e-5
+WEIGHT_DECAY = 1e-5 # Optuna suggested value = original
 
 # -----------------------------
 # Dataloader / performance
@@ -97,15 +99,23 @@ SCHEDULER_MIN_LR = 1e-6
 # -----------------------------
 # Loss function
 # -----------------------------
-LAMBDA_DICE = 0.7  # weight of Dice loss component
-LAMBDA_CE = 0.3    # weight of Cross Entropy loss component
+# LAMBDA_DICE = 0.7  # weight of Dice loss component optuna
+# LAMBDA_CE = 0.3    # weight of Cross Entropy loss component optuna
+
+LAMBDA_DICE = 1.0  # weight of Dice loss component
+LAMBDA_CE = 1.0    # weight of Cross Entropy loss component
+
+# reuse LAMBDA_CE as focal weight, so if using DiceFocal, LAMBDA_CE is the gamma parameter for focal loss.
+
+# Choose loss function: 'DiceCE' or 'DiceFocal'
+LOSS_FUNCTION = 'DiceFocal'
 
 # -----------------------------
 # Dynamic class weighting
 # -----------------------------
 # If True, class weights are updated after each validation based on per-class Dice scores.
 # If False, all classes are weighted equally.
-DYNAMIC_CLASS_WEIGHTS = False
+DYNAMIC_CLASS_WEIGHTS = True
 
 # -----------------------------
 # Debug / limits
