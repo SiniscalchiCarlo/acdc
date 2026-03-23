@@ -1,3 +1,5 @@
+# Define ending criterion 
+
 import optuna
 from optuna.pruners import MedianPruner
 import sys

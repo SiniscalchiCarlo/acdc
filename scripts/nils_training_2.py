@@ -14,7 +14,6 @@ from monai.metrics import DiceMetric, HausdorffDistanceMetric
 from monai.networks.nets import UNet, AttentionUnet, SegResNet
 from monai.transforms import AsDiscrete, Compose, EnsureType
 from tqdm import tqdm
-import wandb
 
 # Allow the script to be executed from the repository root without installing the package.
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -54,13 +53,38 @@ def init_wandb_run(config) -> Any | None:
     if isinstance(run_name, str) and not run_name.strip():
         run_name = None
 
+    requested_mode = str(getattr(config, "WANDB_MODE", "online")).strip().lower()
+    if requested_mode not in {"online", "offline", "disabled"}:
+        print(f"Unknown WANDB_MODE '{requested_mode}', defaulting to 'online'.")
+        requested_mode = "online"
+
+    effective_mode = requested_mode
+    login_timeout = int(getattr(config, "WANDB_LOGIN_TIMEOUT", 20))
+    init_timeout = int(getattr(config, "WANDB_INIT_TIMEOUT", 30))
+    fallback_to_offline = bool(getattr(config, "WANDB_FALLBACK_TO_OFFLINE", True))
+
+    if requested_mode == "online":
+        try:
+            wandb.login(timeout=login_timeout)
+        except Exception as ex:
+            if fallback_to_offline:
+                effective_mode = "offline"
+                print(
+                    f"W&B login failed/timed out ({ex}). "
+                    f"Falling back to offline mode for this run."
+                )
+            else:
+                print(f"W&B login failed/timed out ({ex}). Continuing without W&B.")
+                return None
+
     try:
         run = wandb.init(
             project=config.WANDB_PROJECT,
             entity=getattr(config, "WANDB_ENTITY", None),
             name=run_name,
-            mode=getattr(config, "WANDB_MODE", "online"),
+            mode=effective_mode,
             dir=str(REPO_ROOT),
+            settings=wandb.Settings(init_timeout=init_timeout),
             config={
                 "seed": config.SEED,
                 "fold": config.FOLD,
@@ -75,9 +99,10 @@ def init_wandb_run(config) -> Any | None:
                 "target_spacing": list(config.TARGET_SPACING),
                 "patch_size": list(config.PATCH_SIZE),
                 "preprocessed_root": None if config.PREPROCESSED_ROOT is None else str(config.PREPROCESSED_ROOT),
+                "wandb_mode_effective": effective_mode,
             },
         )
-        print(f"W&B run initialized: {run.name}")
+        print(f"W&B run initialized in '{effective_mode}' mode: {run.name}")
         return run
     except Exception as ex:
         print(f"Failed to initialize W&B run: {ex}. Continuing without W&B.")
@@ -93,6 +118,7 @@ def log_wandb_epoch(
     samples_per_sec: float,
     max_gpu_memory_mb: float | None,
     val_metrics: dict[str, float | list[float]] | None,
+    class_weights: torch.Tensor | None = None,
 ) -> None:
     """Log epoch metrics to Weights & Biases if a run is active."""
     if wandb_run is None:
@@ -120,6 +146,11 @@ def log_wandb_epoch(
             if idx < len(class_hd95_scores):
                 payload[f"val/hd95_{class_name}"] = float(class_hd95_scores[idx])
 
+    # Log dynamic class weights if provided
+    if class_weights is not None:
+        for idx, class_name in enumerate(CLASS_NAMES):
+            payload[f"class_weight/{class_name}"] = float(class_weights[idx + 1])  # +1 to skip background
+
     wandb_run.log(payload, step=epoch)
 
 
@@ -128,19 +159,13 @@ def get_device():
 
 
 def print_device_info(device: torch.device) -> None:
-    """Print information about the device used for training.
-
-    Prints CUDA-specific details when a CUDA device is available.
-    """
-    # Basic device label
+    """Print information about the device used for training."""
     print(f"Using device: {device}")
 
-    # If CUDA is available, print more details
     if device.type == "cuda" and torch.cuda.is_available():
         try:
             print(f"CUDA available: True")
             print(f"CUDA device count: {torch.cuda.device_count()}")
-            # Print name and properties of the first CUDA device
             print(f"CUDA device name: {torch.cuda.get_device_name(0)}")
             props = torch.cuda.get_device_properties(0)
             print(f"CUDA total memory (MB): {props.total_memory / (1024**2):.1f}")
@@ -151,21 +176,20 @@ def print_device_info(device: torch.device) -> None:
     else:
         print("CUDA available: False (running on CPU)")
 
+
 def get_model(config):
     model_name = config.MODEL
-    
+
     if model_name == 'UNET':
         return build_model()
-    
     elif model_name == 'ATTUNET':
         return build_model_attention()
-    
     elif model_name == 'SEGRESNET':
         return build_model_residual()
-    
     else:
         available = ["UNET", "ATTUNET", "SEGRESNET"]
         raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
+
 
 def build_model() -> UNet:
     """Construct a modest 2D UNet for baseline slice-wise segmentation with residual units."""
@@ -178,16 +202,17 @@ def build_model() -> UNet:
         num_res_units=2,
     )
 
+
 def build_model_attention() -> AttentionUnet:
-    """Construct Attention UNet. (Has no residual units, may implement later if time allows.)"""
+    """Construct Attention UNet."""
     return AttentionUnet(
         spatial_dims=2,
         in_channels=1,
         out_channels=4,
         channels=(16, 32, 64, 128, 256),
-        # channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
     )
+
 
 def build_model_residual() -> SegResNet:
     """Construct top-end SegResNet."""
@@ -206,6 +231,18 @@ def build_post_transforms() -> tuple[Compose, Compose]:
     post_pred = Compose([EnsureType(), AsDiscrete(argmax=True, to_onehot=4)])
     post_label = Compose([EnsureType(), AsDiscrete(to_onehot=4)])
     return post_pred, post_label
+
+
+def compute_class_weights(val_dice_per_class: list[float], device: torch.device) -> torch.Tensor:
+    """Compute class weights inversely proportional to per-class Dice scores— background gets weight 1.0.
+    Classes with lower Dice get higher weight so the loss focuses more on them.
+    Weights are normalized so they sum to the number of classes."""
+    dice_scores = torch.tensor(val_dice_per_class, dtype=torch.float32)
+    weights = 1.0 - dice_scores.clamp(0.0, 0.999)
+    weights = weights / weights.sum() * len(dice_scores)
+    # Prepend background weight of 1.0
+    background_weight = torch.ones(1, dtype=torch.float32)
+    return torch.cat([background_weight, weights], dim=0).to(device)
 
 
 def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
@@ -395,6 +432,7 @@ def main() -> None:
         pin_memory=cfg.PIN_MEMORY,
         collate_fn=collate_fn,
     )
+
     model = get_model(cfg).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -404,13 +442,18 @@ def main() -> None:
         patience=cfg.SCHEDULER_PATIENCE,
         min_lr=cfg.SCHEDULER_MIN_LR,
     )
+
+    # Start with equal weights for RV, MYO, LV — updated dynamically after each validation
+    class_weights = torch.ones(4, dtype=torch.float32).to(device)
     loss_fn = DiceCELoss(
-    to_onehot_y=True,
-    softmax=True,
-    lambda_dice=cfg.LAMBDA_DICE,
-    lambda_ce=cfg.LAMBDA_CE,
-)
-    #Maybe use focal loss?
+        to_onehot_y=True,
+        softmax=True,
+        lambda_dice=cfg.LAMBDA_DICE,
+        lambda_ce=cfg.LAMBDA_CE,
+        weight=class_weights,
+    )
+    # Maybe use focal loss?
+
     best_val_dice = -1.0
     best_epoch = 0
     best_metrics: dict[str, float | list[float]] | None = None
@@ -455,6 +498,22 @@ def main() -> None:
             )
             scheduler.step(float(val_metrics["val_dice"]))
 
+            # Dynamically update class weights based on per-class Dice performance
+            class_weights = compute_class_weights(val_metrics["val_dice_per_class"], device)
+            loss_fn = DiceCELoss(
+                to_onehot_y=True,
+                softmax=True,
+                lambda_dice=cfg.LAMBDA_DICE,
+                lambda_ce=cfg.LAMBDA_CE,
+                weight=class_weights,
+            )
+            print(
+                f"Updated class weights — "
+                f"RV: {class_weights[1]:.3f} "
+                f"MYO: {class_weights[2]:.3f} "
+                f"LV: {class_weights[3]:.3f}"
+            )
+
             if float(val_metrics["val_dice"]) > best_val_dice:
                 best_val_dice = float(val_metrics["val_dice"])
                 best_epoch = epoch
@@ -477,6 +536,7 @@ def main() -> None:
                 f"Epoch {epoch}: train_loss={train_loss:.4f} "
                 f"val_loss={float(val_metrics['val_loss']):.4f} "
                 f"val_dice={float(val_metrics['val_dice']):.4f} "
+                f"val_hd95={float(val_metrics['val_hd95']):.4f} "
                 f"lr={float(optimizer.param_groups[0]['lr']):.6f} "
                 f"time={epoch_duration_sec:.2f}s "
                 f"throughput={samples_per_sec:.2f} samples/s"
@@ -490,6 +550,7 @@ def main() -> None:
                 samples_per_sec=samples_per_sec,
                 max_gpu_memory_mb=max_gpu_memory_mb,
                 val_metrics=val_metrics,
+                class_weights=class_weights,
             )
         else:
             print(
@@ -531,6 +592,8 @@ def main() -> None:
         "best_val_loss": None if best_metrics is None else best_metrics["val_loss"],
         "best_train_loss": None if best_metrics is None else best_metrics["train_loss"],
         "best_val_dice_per_class": None if best_metrics is None else best_metrics["val_dice_per_class"],
+        "best_val_hd95": None if best_metrics is None else best_metrics["val_hd95"],
+        "best_val_hd95_per_class": None if best_metrics is None else best_metrics["val_hd95_per_class"],
         "class_names": list(CLASS_NAMES),
         "best_epoch_duration_sec": best_epoch_duration_sec,
         "best_epoch_train_samples_per_sec": best_epoch_throughput,
@@ -550,17 +613,22 @@ def main() -> None:
             wandb_run.summary["best_val_dice"] = float(best_metrics["val_dice"])
             wandb_run.summary["best_val_loss"] = float(best_metrics["val_loss"])
             wandb_run.summary["best_train_loss"] = float(best_metrics["train_loss"])
+            wandb_run.summary["best_val_hd95"] = float(best_metrics["val_hd95"])
         wandb_run.summary["model_path"] = str(cfg.MODEL_OUTPUT)
-        
-        # Upload model weights to wandb
-        artifact = wandb.Artifact(
-        name=f"model-{cfg.MODEL.lower()}",
-        type="model",
-        description=f"Best {cfg.MODEL} checkpoint from run {wandb_run.name}",
-        metadata=best_metrics,
-        )
-        artifact.add_file(str(cfg.MODEL_OUTPUT))
-        wandb_run.log_artifact(artifact)
+
+        try:
+            import wandb
+
+            artifact = wandb.Artifact(
+                name=f"model-{cfg.MODEL.lower()}",
+                type="model",
+                description=f"Best {cfg.MODEL} checkpoint from run {wandb_run.name}",
+                metadata=best_metrics,
+            )
+            artifact.add_file(str(cfg.MODEL_OUTPUT))
+            wandb_run.log_artifact(artifact)
+        except Exception as ex:
+            print(f"W&B artifact upload skipped: {ex}")
 
         wandb_run.finish()
         print("W&B run finished.")
