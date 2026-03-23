@@ -26,7 +26,7 @@ N_SPLITS = 5
 # -----------------------------
 # Model choice string used by `get_model()` to construct the network.
 # Options: 'UNET' | 'ATTUNET' | 'SEGRESNET'
-MODEL = 'UNET'
+MODEL = 'ATTUNET'
 
 # -----------------------------
 # Data / preprocessing
@@ -53,10 +53,10 @@ MIN_LABEL_PIXELS = min_label_pixels_2d
 EPOCHS = 100
 
 # Number of samples per training batch.
-BATCH_SIZE = 40
+BATCH_SIZE = 32
 
 # Initial learning rate for the optimizer (Adam).
-LR = 1e-3
+LR = 7.4e-5
 
 # Weight decay (L2 regularization) applied by the optimizer.
 WEIGHT_DECAY = 1e-5
@@ -97,8 +97,15 @@ SCHEDULER_MIN_LR = 1e-6
 # -----------------------------
 # Loss function
 # -----------------------------
-LAMBDA_DICE = 1.0  # weight of Dice loss component
-LAMBDA_CE = 1.0    # weight of Cross Entropy loss component
+LAMBDA_DICE = 0.7  # weight of Dice loss component
+LAMBDA_CE = 0.3    # weight of Cross Entropy loss component
+
+# -----------------------------
+# Dynamic class weighting
+# -----------------------------
+# If True, class weights are updated after each validation based on per-class Dice scores.
+# If False, all classes are weighted equally.
+DYNAMIC_CLASS_WEIGHTS = False
 
 # -----------------------------
 # Debug / limits

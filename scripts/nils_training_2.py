@@ -96,6 +96,7 @@ def init_wandb_run(config) -> Any | None:
                 "weight_decay": config.WEIGHT_DECAY,
                 "lambda_dice": config.LAMBDA_DICE,
                 "lambda_ce": config.LAMBDA_CE,
+                "dynamic_class_weights": config.DYNAMIC_CLASS_WEIGHTS,
                 "target_spacing": list(config.TARGET_SPACING),
                 "patch_size": list(config.PATCH_SIZE),
                 "preprocessed_root": None if config.PREPROCESSED_ROOT is None else str(config.PREPROCESSED_ROOT),
@@ -146,10 +147,10 @@ def log_wandb_epoch(
             if idx < len(class_hd95_scores):
                 payload[f"val/hd95_{class_name}"] = float(class_hd95_scores[idx])
 
-    # Log dynamic class weights if provided
+    # Log dynamic class weights if provided — index +1 to skip background
     if class_weights is not None:
         for idx, class_name in enumerate(CLASS_NAMES):
-            payload[f"class_weight/{class_name}"] = float(class_weights[idx + 1])  # +1 to skip background
+            payload[f"class_weight/{class_name}"] = float(class_weights[idx + 1])
 
     wandb_run.log(payload, step=epoch)
 
@@ -234,15 +235,31 @@ def build_post_transforms() -> tuple[Compose, Compose]:
 
 
 def compute_class_weights(val_dice_per_class: list[float], device: torch.device) -> torch.Tensor:
-    """Compute class weights inversely proportional to per-class Dice scores— background gets weight 1.0.
-    Classes with lower Dice get higher weight so the loss focuses more on them.
-    Weights are normalized so they sum to the number of classes."""
+    """Compute class weights inversely proportional to per-class Dice scores.
+
+    Background gets weight 1.0. Classes with lower Dice get higher weight
+    so the loss focuses more on them. Foreground weights are normalized
+    so they sum to the number of foreground classes.
+    """
     dice_scores = torch.tensor(val_dice_per_class, dtype=torch.float32)
+    # Clamp to avoid division by zero if Dice is 1.0
     weights = 1.0 - dice_scores.clamp(0.0, 0.999)
+    # Normalize so foreground weights sum to number of classes
     weights = weights / weights.sum() * len(dice_scores)
     # Prepend background weight of 1.0
     background_weight = torch.ones(1, dtype=torch.float32)
     return torch.cat([background_weight, weights], dim=0).to(device)
+
+
+def build_loss_fn(class_weights: torch.Tensor) -> DiceCELoss:
+    """Build DiceCELoss with the given class weights."""
+    return DiceCELoss(
+        to_onehot_y=True,
+        softmax=True,
+        lambda_dice=cfg.LAMBDA_DICE,
+        lambda_ce=cfg.LAMBDA_CE,
+        weight=class_weights,
+    )
 
 
 def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
@@ -443,15 +460,12 @@ def main() -> None:
         min_lr=cfg.SCHEDULER_MIN_LR,
     )
 
-    # Start with equal weights for RV, MYO, LV — updated dynamically after each validation
+    # Start with equal weights for all 4 classes (background, RV, MYO, LV)
     class_weights = torch.ones(4, dtype=torch.float32).to(device)
-    loss_fn = DiceCELoss(
-        to_onehot_y=True,
-        softmax=True,
-        lambda_dice=cfg.LAMBDA_DICE,
-        lambda_ce=cfg.LAMBDA_CE,
-        weight=class_weights,
-    )
+    loss_fn = build_loss_fn(class_weights)
+
+    # Log whether dynamic weighting is enabled
+    print(f"Dynamic class weighting: {'enabled' if cfg.DYNAMIC_CLASS_WEIGHTS else 'disabled'}")
     # Maybe use focal loss?
 
     best_val_dice = -1.0
@@ -498,21 +512,16 @@ def main() -> None:
             )
             scheduler.step(float(val_metrics["val_dice"]))
 
-            # Dynamically update class weights based on per-class Dice performance
-            class_weights = compute_class_weights(val_metrics["val_dice_per_class"], device)
-            loss_fn = DiceCELoss(
-                to_onehot_y=True,
-                softmax=True,
-                lambda_dice=cfg.LAMBDA_DICE,
-                lambda_ce=cfg.LAMBDA_CE,
-                weight=class_weights,
-            )
-            print(
-                f"Updated class weights — "
-                f"RV: {class_weights[1]:.3f} "
-                f"MYO: {class_weights[2]:.3f} "
-                f"LV: {class_weights[3]:.3f}"
-            )
+            # Dynamically update class weights based on per-class Dice — only if enabled
+            if cfg.DYNAMIC_CLASS_WEIGHTS:
+                class_weights = compute_class_weights(val_metrics["val_dice_per_class"], device)
+                loss_fn = build_loss_fn(class_weights)
+                print(
+                    f"Updated class weights — "
+                    f"RV: {class_weights[1]:.3f} "
+                    f"MYO: {class_weights[2]:.3f} "
+                    f"LV: {class_weights[3]:.3f}"
+                )
 
             if float(val_metrics["val_dice"]) > best_val_dice:
                 best_val_dice = float(val_metrics["val_dice"])
@@ -550,7 +559,7 @@ def main() -> None:
                 samples_per_sec=samples_per_sec,
                 max_gpu_memory_mb=max_gpu_memory_mb,
                 val_metrics=val_metrics,
-                class_weights=class_weights,
+                class_weights=class_weights if cfg.DYNAMIC_CLASS_WEIGHTS else None,
             )
         else:
             print(
