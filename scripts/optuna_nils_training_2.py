@@ -41,7 +41,7 @@ EARLY_STOP_PATIENCE = 10  # stop if no improvement in N trials
 # -----------------------------
 # Warm start
 # -----------------------------
-PRETRAINED_MODEL_PATH = Path("artifacts") / "models" / "Baseline_ATTUNET.pt"
+PRETRAINED_MODEL_PATH = Path("artifacts") / "models" / "DFL_ATTUNET.pt"
 
 # -----------------------------
 # Build data once
@@ -59,11 +59,9 @@ collate_fn = pad_list_data_collate
 # Objective
 # -----------------------------
 def objective(trial):
-    lr = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 40])
-    lambda_dice = trial.suggest_float("lambda_dice", 0.3, 1.0)
-    lambda_ce = trial.suggest_float("lambda_ce", 0.3, 1.0)
+    lambda_dice = trial.suggest_float("lambda_dice", 0.3, 2.0)
+    lambda_ce = trial.suggest_float("lambda_ce", 0.3, 2.0)
 
     device = get_device()
     model = get_model(cfg).to(device)
@@ -72,7 +70,7 @@ def objective(trial):
         checkpoint = torch.load(PRETRAINED_MODEL_PATH, map_location=device)
         model.load_state_dict(checkpoint["model_state_dict"])
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.LR, weight_decay=weight_decay)
 
     loss_fn = DiceCELoss(
         to_onehot_y=True,
@@ -86,7 +84,7 @@ def objective(trial):
         val_items=val_items,
         train_transform=train_transform,
         val_transform=val_transform,
-        batch_size=batch_size,
+        batch_size=cfg.BATCH_SIZE,
         num_workers=cfg.NUM_WORKERS,
         cache_rate_train=cfg.CACHE_RATE_TRAIN,
         cache_rate_val=cfg.CACHE_RATE_VAL,
@@ -95,9 +93,9 @@ def objective(trial):
         collate_fn=collate_fn,
     )
 
-    for epoch in range(10):
-        train_one_epoch(model, train_loader, optimizer, loss_fn, device)
-        val_metrics = validate(model, val_loader, loss_fn, device)
+    for epoch in range(30):
+        train_one_epoch(model, train_loader, optimizer, loss_fn, device, max_batches=None)
+        val_metrics = validate(model, val_loader, loss_fn, device, max_batches=None)
 
         trial.report(val_metrics["val_dice"], epoch)
         trial.set_user_attr("val_hd95", val_metrics["val_hd95"])
@@ -145,9 +143,7 @@ if __name__ == "__main__":
     )
 
     study.enqueue_trial({
-        "lr": 1e-3,
-        "weight_decay": 1e-5,
-        "batch_size": 40,
+        "weight_decay": 1e-4,
         "lambda_dice": 1.0,
         "lambda_ce": 1.0,
     })

@@ -208,10 +208,11 @@ def build_model() -> UNet:
 def build_model_attention() -> AttentionUnet:
     """Construct Attention UNet."""
     return AttentionUnet(
-        spatial_dims=2,
-        in_channels=1,
+        spatial_dims=2, # Still 2D UNet, treating each slice independently. Could experiment with 3D attention or stacking multiple slices as input channels in the future.
+        in_channels=1, # Treating each slice independently, maybe try stack 3 slices as input channels
         out_channels=4,
         channels=(16, 32, 64, 128, 256),
+        #channels=(32, 64, 128, 256, 512), # Try larger model? maybe not the best option
         strides=(2, 2, 2, 2),
     )
 
@@ -251,7 +252,8 @@ def compute_class_weights(val_dice_per_class: list[float], device: torch.device)
     background_weight = torch.ones(1, dtype=torch.float32)
     return torch.cat([background_weight, weights], dim=0).to(device)
 
-
+# Try CenterlineDiceLoss or Inter-Slice Centroid Smoothness Loss? 
+# Problem with inter-slice smoothness = shuffle=True so random batches often do not contain many truly consecutive slices.
 def build_loss_fn(class_weights: torch.Tensor) -> torch.nn.Module:
     """Build the loss function selected in config with the given class weights.
 
@@ -469,7 +471,7 @@ def main() -> None:
     )
 
     model = get_model(cfg).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         mode="max",
