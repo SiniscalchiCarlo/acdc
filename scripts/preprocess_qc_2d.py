@@ -29,7 +29,7 @@ from config import (
     target_spacing_2d,
 )
 from src.load_data_2D import build_acdc_list
-from src.transforms_2D import build_train_transform, build_val_transform
+from src.transforms_2D import build_preprocessed_augment_transform, build_preprocessing_transform
 
 LIMIT = preprocess_qc_limit_2d
 SEED = seed_2d
@@ -85,12 +85,11 @@ def main() -> None:
         ]
     )
 
-    preprocess_transform = build_val_transform(
+    preprocess_transform = build_preprocessing_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
     )
-    train_transform = build_train_transform(
-        target_spacing=TARGET_SPACING,
+    augment_transform = build_preprocessed_augment_transform(
         patch_size=PATCH_SIZE,
     )
 
@@ -107,7 +106,12 @@ def main() -> None:
     for index, item in enumerate(sampled_items):
         raw = raw_transform(item)
         processed = preprocess_transform(item)
-        augmented = train_transform(item)
+        augmented = augment_transform(
+            {
+                "image": np.asarray(processed["image"]).copy(),
+                "label": np.asarray(processed["label"]).copy(),
+            }
+        )
 
         raw_image_volume = np.asarray(raw["image"])[0]
         raw_label_volume = np.asarray(raw["label"])[0]

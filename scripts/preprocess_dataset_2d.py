@@ -19,7 +19,7 @@ from config import (
     target_spacing_2d,
 )
 from src.load_data_2D import build_acdc_list
-from src.transforms_2D import build_val_transform
+from src.transforms_2D import build_preprocessing_transform
 
 TARGET_SPACING = target_spacing_2d
 PATCH_SIZE = patch_size_2d
@@ -33,7 +33,7 @@ def main() -> None:
         include_background_slices=INCLUDE_BACKGROUND_SLICES,
         min_label_pixels=MIN_LABEL_PIXELS,
     )
-    transform = build_val_transform(
+    transform = build_preprocessing_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
     )

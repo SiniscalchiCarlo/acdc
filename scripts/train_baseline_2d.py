@@ -20,7 +20,6 @@ if str(REPO_ROOT) not in sys.path:
 
 import train_baseline_2d_config as cfg
 from src.load_data_2D import (
-    build_acdc_list,
     build_loaders,
     build_preprocessed_2d_list,
     load_preprocessed_2d_manifest,
@@ -29,8 +28,6 @@ from src.load_data_2D import (
 from src.transforms_2D import (
     build_preprocessed_train_transform,
     build_preprocessed_val_transform,
-    build_train_transform,
-    build_val_transform,
 )
 
 CLASS_NAMES = ("rv", "myo", "lv")
@@ -70,7 +67,6 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
 
     expected = {
         "target_spacing": list(cfg.TARGET_SPACING),
-        "patch_size": list(cfg.PATCH_SIZE),
         "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
         "min_label_pixels": cfg.MIN_LABEL_PIXELS,
     }
@@ -105,6 +101,16 @@ def train_one_epoch(
     for batch_idx, batch in enumerate(loader, start=1):
         images = batch["image"].to(device)
         labels = batch["label"].to(device)
+
+        if batch_idx == 1:
+            image0 = images[0, 0].detach().cpu()
+            label0 = labels[0, 0].detach().cpu()
+
+            print("image unique count:", torch.unique(image0).numel())
+            print("label unique count:", torch.unique(label0).numel())
+
+
+
         num_samples += int(images.shape[0])
 
         optimizer.zero_grad(set_to_none=True)
@@ -185,7 +191,7 @@ def save_model(
 
 
 def main() -> None:
-    """Train and validate a reproducible 2D baseline using config-only settings."""
+    """Train and validate a reproducible 2D baseline from preprocessed 2D slices."""
     device = get_device()
     torch.manual_seed(cfg.SEED)
     if torch.cuda.is_available():
@@ -193,34 +199,20 @@ def main() -> None:
         torch.cuda.reset_peak_memory_stats()
 
     if cfg.PREPROCESSED_ROOT is None:
-        items = build_acdc_list(
-            include_background_slices=cfg.INCLUDE_BACKGROUND_SLICES,
-            min_label_pixels=cfg.MIN_LABEL_PIXELS,
-        )
-    else:
-        manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-        validate_preprocessed_manifest(manifest)
-        items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
-    train_items, val_items = split_by_patient(items, n_splits=cfg.N_SPLITS, fold=cfg.FOLD)
+        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
 
-    if cfg.PREPROCESSED_ROOT is None:
-        train_transform = build_train_transform(
-            target_spacing=cfg.TARGET_SPACING,
-            patch_size=cfg.PATCH_SIZE,
-        )
-        val_transform = build_val_transform(
-            target_spacing=cfg.TARGET_SPACING,
-            patch_size=cfg.PATCH_SIZE,
-        )
-        collate_fn = None
-    else:
-        train_transform = build_preprocessed_train_transform(
-            patch_size=cfg.PATCH_SIZE,
-        )
-        val_transform = build_preprocessed_val_transform(
-            patch_size=cfg.PATCH_SIZE,
-        )
-        collate_fn = pad_list_data_collate
+    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
+    validate_preprocessed_manifest(manifest)
+    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
+
+    train_transform = build_preprocessed_train_transform(
+        patch_size=cfg.PATCH_SIZE,
+    )
+    val_transform = build_preprocessed_val_transform(
+        patch_size=cfg.PATCH_SIZE,
+    )
+    collate_fn = pad_list_data_collate
 
     train_loader, val_loader = build_loaders(
         train_items=train_items,
@@ -336,7 +328,7 @@ def main() -> None:
     )
 
     summary = {
-        "fold": cfg.FOLD,
+        "val_size": cfg.VAL_SIZE,
         "epochs_run": epochs_run,
         "train_slices": len(train_items),
         "val_slices": len(val_items),
@@ -350,7 +342,7 @@ def main() -> None:
         "best_epoch_train_samples_per_sec": best_epoch_throughput,
         "best_epoch_max_gpu_memory_mb": best_epoch_gpu_memory_mb,
         "model_path": str(cfg.MODEL_OUTPUT),
-        "preprocessed_root": None if cfg.PREPROCESSED_ROOT is None else str(cfg.PREPROCESSED_ROOT),
+        "preprocessed_root": str(cfg.PREPROCESSED_ROOT),
     }
 
     cfg.OUTPUT.parent.mkdir(parents=True, exist_ok=True)

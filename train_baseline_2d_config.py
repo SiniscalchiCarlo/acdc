@@ -9,8 +9,7 @@ from config import (
     target_spacing_2d,
 )
 
-FOLD = 0
-N_SPLITS = 5
+VAL_SIZE = 0.2
 EPOCHS = 100
 BATCH_SIZE = 32
 LR = 1e-3
