@@ -8,6 +8,23 @@ dependencies = [
     "matplotlib>=3.10.6",
     "monai>=1.5.2",
     "nibabel>=5.3.2",
+    "numpy>=2.4.2",
+    "optuna>=4.8.0",
     "scikit-learn>=1.8.0",
     "simpleitk>=2.5.3",
+    "wandb>=0.17.0",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "optuna-dashboard>=0.20.0",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }

@@ -38,3 +38,5 @@ MAX_VAL_BATCHES = None
 PREPROCESSED_ROOT = Path(preprocessed_2d_path)
 OUTPUT = Path("artifacts") / "baseline_metrics_2d.json"
 MODEL_OUTPUT = Path("artifacts") / "baseline_model_2d.pt"
+
+MODEL = 'UNET' # UNET, ATTUNET, SEGRESNET

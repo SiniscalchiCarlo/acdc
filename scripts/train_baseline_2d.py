@@ -10,7 +10,7 @@ import torch
 from monai.data import decollate_batch, pad_list_data_collate
 from monai.losses import DiceCELoss
 from monai.metrics import DiceMetric
-from monai.networks.nets import UNet
+from monai.networks.nets import UNet, attentionunet, segresnet
 from monai.transforms import AsDiscrete, Compose, EnsureType
 
 # Allow the script to be executed from the repository root without installing the package.
@@ -39,6 +39,21 @@ def get_device() -> torch.device:
         return torch.device("cuda")
     return torch.device("cpu")
 
+def get_model(config):
+    model_name = config.MODEL()    
+    
+    if model_name == 'UNET':
+        return build_model()
+    
+    elif model_name == 'ATTUNET':
+        return build_model_attention()
+    
+    elif model_name == 'SEGRESNET':
+        return build_model_residual()
+    
+    else:
+        available = ["UNET", "ATTENTIONUNET", "RESUNET"]
+        raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
 
 def build_model() -> UNet:
     """Construct a modest 2D UNet for baseline slice-wise segmentation."""
@@ -49,6 +64,27 @@ def build_model() -> UNet:
         channels=(16, 32, 64, 128, 256),
         strides=(2, 2, 2, 2),
         num_res_units=2,
+    )
+
+def build_model_attention() -> attentionunet:
+    """Construct attention UNet without residual units possible."""
+    return attentionunet(
+        spatial_dims=2,
+        in_channels=1,
+        out_channels=4,
+        channels=(16, 32, 64, 128, 256),
+        strides=(2, 2, 2, 2),
+    )
+
+def build_model_residual() -> segresnet:
+    """Construct top-end SegResNet."""
+    return segresnet(
+        spatial_dims=2,
+        in_channels=1,
+        out_channels=4,   
+        init_filters=16,       
+        blocks_down=(1, 2, 2, 4),
+        blocks_up=(1, 1, 1),
     )
 
 
@@ -227,8 +263,7 @@ def main() -> None:
         pin_memory=cfg.PIN_MEMORY,
         collate_fn=collate_fn,
     )
-
-    model = build_model().to(device)
+    model = get_model(cfg).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
