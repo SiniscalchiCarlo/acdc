@@ -8,10 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+.env
 
 AGENTS.md
 HANDOFF.md
 config_local.py
-config.py
 
 artifacts/

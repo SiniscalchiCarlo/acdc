@@ -12,11 +12,13 @@ dependencies = [
     "optuna>=4.8.0",
     "scikit-learn>=1.8.0",
     "simpleitk>=2.5.3",
+    "python-dotenv>=1.1.1",
     "wandb>=0.17.0",
     "torch",
     "torchvision",
     "torchaudio",
     "optuna-dashboard>=0.20.0",
+    "dotenv>=0.9.9",
 ]
 
 [[tool.uv.index]]

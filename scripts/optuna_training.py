@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from nils_training_2 import (
+from training import (
     get_device,
     get_model,
     train_one_epoch,
@@ -29,7 +29,7 @@ from src.transforms_2D import (
     build_preprocessed_train_transform,
     build_preprocessed_val_transform,
 )
-import nils_training_2_config as cfg
+import training_config as cfg
 
 # -----------------------------
 # Configurable stopping criteria

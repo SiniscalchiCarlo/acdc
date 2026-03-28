@@ -20,9 +20,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import nils_training_2_config as cfg
+import training_config as cfg
 from src.load_data_2D import (
-    build_acdc_list,
     build_loaders,
     build_preprocessed_2d_list,
     load_preprocessed_2d_manifest,
@@ -31,8 +30,6 @@ from src.load_data_2D import (
 from src.transforms_2D import (
     build_preprocessed_train_transform,
     build_preprocessed_val_transform,
-    build_train_transform,
-    build_val_transform,
 )
 
 CLASS_NAMES = ("rv", "myo", "lv")
@@ -427,34 +424,20 @@ def main() -> None:
         torch.cuda.reset_peak_memory_stats()
 
     if cfg.PREPROCESSED_ROOT is None:
-        items = build_acdc_list(
-            include_background_slices=cfg.INCLUDE_BACKGROUND_SLICES,
-            min_label_pixels=cfg.MIN_LABEL_PIXELS,
-        )
-    else:
-        manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-        validate_preprocessed_manifest(manifest)
-        items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
-    train_items, val_items = split_by_patient(items, n_splits=cfg.N_SPLITS, fold=cfg.FOLD)
+        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
 
-    if cfg.PREPROCESSED_ROOT is None:
-        train_transform = build_train_transform(
-            target_spacing=cfg.TARGET_SPACING,
-            patch_size=cfg.PATCH_SIZE,
-        )
-        val_transform = build_val_transform(
-            target_spacing=cfg.TARGET_SPACING,
-            patch_size=cfg.PATCH_SIZE,
-        )
-        collate_fn = None
-    else:
-        train_transform = build_preprocessed_train_transform(
-            patch_size=cfg.PATCH_SIZE,
-        )
-        val_transform = build_preprocessed_val_transform(
-            patch_size=cfg.PATCH_SIZE,
-        )
-        collate_fn = pad_list_data_collate
+    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
+    validate_preprocessed_manifest(manifest)
+    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
+
+    train_transform = build_preprocessed_train_transform(
+        patch_size=cfg.PATCH_SIZE,
+    )
+    val_transform = build_preprocessed_val_transform(
+        patch_size=cfg.PATCH_SIZE,
+    )
+    collate_fn = pad_list_data_collate
 
     train_loader, val_loader = build_loaders(
         train_items=train_items,

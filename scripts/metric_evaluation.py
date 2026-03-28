@@ -6,8 +6,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import nils_training_2_config as cfg
-from nils_training_2 import get_device, get_model, validate
+import training_config as cfg
+from training import get_device, get_model, validate
 from src.load_data_2D import (
     build_preprocessed_2d_list,
     load_preprocessed_2d_manifest,

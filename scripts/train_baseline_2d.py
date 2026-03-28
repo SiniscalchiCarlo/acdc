@@ -40,8 +40,8 @@ def get_device() -> torch.device:
     return torch.device("cpu")
 
 def get_model(config):
-    model_name = config.MODEL()    
-    
+    model_name = config.MODEL
+
     if model_name == 'UNET':
         return build_model()
     
@@ -50,9 +50,9 @@ def get_model(config):
     
     elif model_name == 'SEGRESNET':
         return build_model_residual()
-    
+
     else:
-        available = ["UNET", "ATTENTIONUNET", "RESUNET"]
+        available = ["UNET", "ATTUNET", "SEGRESNET"]
         raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
 
 def build_model() -> UNet:

@@ -17,6 +17,15 @@ uv sync
 this will syncronize you packages with the one on the pyproject.toml
 5. To run code do: python path/to/pythonFile.py
 
+6. Create a local `.env` in the repository root for machine-specific paths. You can copy `.env.example` and adjust the values:
+```dotenv
+DATASET_PATH=/path/to/acdc/database/training
+PREPROCESSED_2D_PATH=artifacts/preprocessed_2d
+MODEL_OUTPUT_DIR=artifacts/models
+PREPROCESS_QC_OUTPUT_JSON_2D=artifacts/preprocess_qc_report_2d.json
+PREPROCESS_QC_OUTPUT_FIGURES_2D=artifacts/preprocess_visual_qc_2d
+```
+
 
 
 # PREPROCESSING

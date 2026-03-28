@@ -20,6 +20,7 @@ FOLD = 0 # No folding, just one split for training and validation. Set to 0 for 
 
 # Number of patient-level splits for cross-validation (used by `split_by_patient`).
 N_SPLITS = 5
+VAL_SIZE = 0.2
 
 # -----------------------------
 # Model / architecture
