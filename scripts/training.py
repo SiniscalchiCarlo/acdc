@@ -303,6 +303,7 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
         "patch_size": list(cfg.PATCH_SIZE),
         "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
         "min_label_pixels": cfg.MIN_LABEL_PIXELS,
+        "triplet_slices": cfg.MODEL in {"25DATTUNET"},  # True for 2.5D, False for 2D
     }
     mismatches: list[str] = []
     for key, expected_value in expected.items():
