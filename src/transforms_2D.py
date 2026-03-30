@@ -110,7 +110,7 @@ class LoadPreprocessedSliceD(Transform):
             d["image"] = sample["image"].astype(np.float32, copy=False)
             d["label"] = sample["label"].astype(np.int64, copy=False)
         return d
-
+    
 def build_preprocessing_transform(
     target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
@@ -132,13 +132,16 @@ def build_preprocessing_transform(
             mode=("bilinear", "nearest"),
         ),
         NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
-        # Changed: image gets 3 channels, label gets center slice only
         ExtractSliceTripletd(keys=["image"], label_keys=["label"], index_key="slice_idx"),
-        SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
-        DivisiblePadd(keys=["image", "label"], k=16),
-        EnsureTyped(keys=["image", "label"]),
     ]
-    return Compose(transforms)
+    transforms.extend(
+        [
+            SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
+            DivisiblePadd(keys=["image", "label"], k=16),
+            EnsureTyped(keys=["image", "label"]),
+        ]
+    )
+    return Compose(transforms)   
 
 
 def build_preprocessed_augment_transform(
