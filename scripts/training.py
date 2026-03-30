@@ -188,7 +188,7 @@ def get_model(config):
     elif model_name == '25DATTUNET':
         return build_model_attention25D()
     else:
-        available = ["UNET", "ATTUNET", "SEGRESNET"]
+        available = ["UNET", "ATTUNET", "SEGRESNET", "25DATTUNET"]
         raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
 
 
@@ -238,11 +238,16 @@ def build_model_residual() -> SegResNet:
         blocks_up=(1, 1, 1),
     )
 
-
 def build_post_transforms() -> tuple[Compose, Compose]:
-    """Build post-processing transforms for predictions and labels before Dice."""
-    post_pred = Compose([EnsureType(), AsDiscrete(argmax=True, to_onehot=4)])
-    post_label = Compose([EnsureType(), AsDiscrete(to_onehot=4)])
+    # Ensure background is included in one-hot for the DiceMetric
+    post_pred = Compose([
+        EnsureType(), 
+        AsDiscrete(argmax=True, to_onehot=4)
+    ])
+    post_label = Compose([
+        EnsureType(), 
+        AsDiscrete(to_onehot=4)
+    ])
     return post_pred, post_label
 
 
@@ -254,13 +259,17 @@ def compute_class_weights(val_dice_per_class: list[float], device: torch.device)
     so they sum to the number of foreground classes.
     """
     dice_scores = torch.tensor(val_dice_per_class, dtype=torch.float32)
+    
     # Clamp to avoid division by zero if Dice is 1.0
-    weights = 1.0 - dice_scores.clamp(0.0, 0.999)
+    weights = 1.0 - dice_scores.clamp(0.0, 0.9) 
     # Normalize so foreground weights sum to number of classes
-    weights = weights / weights.sum() * len(dice_scores)
-    # Prepend background weight of 1.0
-    background_weight = torch.ones(1, dtype=torch.float32)
+    weights = weights / (weights.sum() + 1e-6) * len(dice_scores)
+    
+    # FIX: Background weight should usually be slightly lower than 1.0 
+    # if you want to force focus on small structures like the Myocardium.
+    background_weight = torch.tensor([0.5], dtype=torch.float32) 
     return torch.cat([background_weight, weights], dim=0).to(device)
+
 
 # Try CenterlineDiceLoss or Inter-Slice Centroid Smoothness Loss? 
 # Problem with inter-slice smoothness = shuffle=True so random batches often do not contain many truly consecutive slices.
@@ -303,6 +312,7 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
         "patch_size": list(cfg.PATCH_SIZE),
         "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
         "min_label_pixels": cfg.MIN_LABEL_PIXELS,
+        "triplet_slices": cfg.MODEL in {"25DATTUNET"},  # True for 2.5D, False for 2D
     }
     mismatches: list[str] = []
     for key, expected_value in expected.items():
@@ -467,6 +477,21 @@ def main() -> None:
     )
 
     model = get_model(cfg).to(device)
+    # Guard: verify model input channels match the preprocessed data
+    _MULTICHANNEL_MODELS = {"25DATTUNET"}
+    _expected_in_channels = 3 if cfg.MODEL in _MULTICHANNEL_MODELS else 1
+    _sample = items[0]
+    _probe = np.load(_sample["sample"])
+    _actual_channels = _probe["image"].shape[0]
+    if _actual_channels != _expected_in_channels:
+        raise RuntimeError(
+            f"Model '{cfg.MODEL}' expects {_expected_in_channels} input channel(s), "
+            f"but preprocessed data has {_actual_channels}. "
+            f"Check that PREPROCESSED_ROOT points to the correct dataset "
+            f"('preprocessed_2d5_path' for 2.5D, 'preprocessed_2d_path' for 2D)."
+        )
+    # END of GUARD
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,

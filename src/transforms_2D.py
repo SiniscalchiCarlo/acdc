@@ -52,27 +52,31 @@ class ExtractSliceTripletd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, Any]) -> dict[Hashable, Any]:
         d = dict(data)
-        if self.index_key not in d:
-            raise KeyError(f"Missing required slice index key: {self.index_key}")
-
         idx = int(d[self.index_key])
 
+        # 1. Handle Images: Stack 3 slices to create 2.5D input [3, H, W]
         for key in self.image_keys:
-            tensor = d[key]                    # [C, H, W, D]
+            tensor = d[key]                    # Expected [C, H, W, D]
             n_slices = tensor.shape[-1]
-            prev_idx  = max(idx - 1, 0)
-            next_idx  = min(idx + 1, n_slices - 1)
-            # Stack along channel dim → [3, H, W]
-            d[key] = np.concatenate(
-                [tensor[..., prev_idx],
-                 tensor[..., idx],
-                 tensor[..., next_idx]],
+            prev_idx = max(idx - 1, 0)
+            next_idx = min(idx + 1, n_slices - 1)
+            
+            # Use np.stack to combine the center slice with its neighbors
+            # We take the first channel [0] assuming grayscale input
+            d[key] = np.stack(
+                [tensor[0, ..., prev_idx], 
+                tensor[0, ..., idx], 
+                tensor[0, ..., next_idx]],
                 axis=0,
             )
 
+        # 2. Handle Labels: Extract only the center slice [1, H, W]
         for key in self.label_keys:
             tensor = d[key]                    # [C, H, W, D]
-            d[key] = tensor[..., idx]          # [C, H, W] — center only
+            # Slicing with idx:idx+1 keeps the channel dimension intact
+            d[key] = tensor[..., idx]
+            if d[key].ndim == 2:               # Safety check for squeezed dims
+                d[key] = d[key][None, ...]
 
         return d
 
@@ -183,11 +187,14 @@ def build_preprocessed_augment_transform(
 def build_preprocessed_train_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and apply online augmentation."""
+    """Load offline-preprocessed 2D slices and apply online augmentation.
+    
+    LoadPreprocessedSliceD already returns image [3, H, W] and label [1, H, W],
+    so EnsureChannelFirstd must NOT be used here.
+    """
     return Compose(
         [
             LoadPreprocessedSliceD(),
-            EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
             EnsureTyped(keys=["image", "label"]),
             build_preprocessed_augment_transform(patch_size=patch_size),
         ]
@@ -197,17 +204,17 @@ def build_preprocessed_train_transform(
 def build_preprocessed_val_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and apply final padding."""
-    transforms: list[Transform] = [
-        LoadPreprocessedSliceD(),
-        EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
-        EnsureTyped(keys=["image", "label"]),
-    ]
-    transforms.extend(
+    """Load offline-preprocessed 2D slices and apply final padding.
+    
+    LoadPreprocessedSliceD already returns image [3, H, W] and label [1, H, W],
+    so EnsureChannelFirstd must NOT be used here.
+    """
+    return Compose(
         [
+            LoadPreprocessedSliceD(),
+            EnsureTyped(keys=["image", "label"]),
             SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
             DivisiblePadd(keys=["image", "label"], k=16),
             EnsureTyped(keys=["image", "label"]),
         ]
     )
-    return Compose(transforms)
