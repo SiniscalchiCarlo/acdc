@@ -185,6 +185,8 @@ def get_model(config):
         return build_model_attention()
     elif model_name == 'SEGRESNET':
         return build_model_residual()
+    elif model_name == '25DATTUNET':
+        return build_model_attention25D()
     else:
         available = ["UNET", "ATTUNET", "SEGRESNET"]
         raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
@@ -207,6 +209,17 @@ def build_model_attention() -> AttentionUnet:
     return AttentionUnet(
         spatial_dims=2, # Still 2D UNet, treating each slice independently. Could experiment with 3D attention or stacking multiple slices as input channels in the future.
         in_channels=1, # Treating each slice independently, maybe try stack 3 slices as input channels
+        out_channels=4,
+        channels=(16, 32, 64, 128, 256),
+        #channels=(32, 64, 128, 256, 512), # Try larger model? maybe not the best option
+        strides=(2, 2, 2, 2),
+    )
+
+def build_model_attention25D() -> AttentionUnet:
+    """Construct 2.5D Attention UNet."""
+    return AttentionUnet(
+        spatial_dims=2, # Still 2D UNet, treating each slice independently. Could experiment with 3D attention or stacking multiple slices as input channels in the future.
+        in_channels=3, # Stack 3 slices as input channels
         out_channels=4,
         channels=(16, 32, 64, 128, 256),
         #channels=(32, 64, 128, 256, 512), # Try larger model? maybe not the best option

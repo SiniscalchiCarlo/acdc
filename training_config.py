@@ -7,6 +7,7 @@ from config import (
     preprocessed_2d_path,
     seed_2d,
     target_spacing_2d,
+    preprocessed_2d5_path
 )
 
 # -----------------------------
@@ -26,14 +27,14 @@ VAL_SIZE = 0.2
 # Model / architecture
 # -----------------------------
 # Model choice string used by `get_model()` to construct the network.
-# Options: 'UNET' | 'ATTUNET' | 'SEGRESNET'
-MODEL = 'ATTUNET'
+# Options: 'UNET' | 'ATTUNET' | 'SEGRESNET' | '25DATTUNET'
+MODEL = '25DATTUNET'
 
 # -----------------------------
 # Data / preprocessing
 # -----------------------------
 # Path to offline preprocessed dataset. If `None`, raw data will be preprocessed on-the-fly.
-PREPROCESSED_ROOT = Path(preprocessed_2d_path)
+PREPROCESSED_ROOT = Path(preprocessed_2d5_path)
 
 # Patch / crop size used by spatial transforms: (height, width).
 PATCH_SIZE = patch_size_2d
@@ -86,10 +87,10 @@ CACHE_RATE_VAL = 1.0
 VAL_EVERY = 1
 
 # Number of consecutive validations without improvement before early stopping.
-EARLY_STOP_PATIENCE = 20
+EARLY_STOP_PATIENCE = 25
 
 # Number of validations without improvement before LR scheduler reduces LR.
-SCHEDULER_PATIENCE = 6
+SCHEDULER_PATIENCE = 8
 
 # Multiplicative factor for LR reduction (new_lr = lr * SCHEDULER_FACTOR).
 SCHEDULER_FACTOR = 0.5
@@ -132,10 +133,10 @@ MAX_VAL_BATCHES = None
 # -----------------------------
 # JSON file where run summary and metrics are written.
 
-OUTPUT = Path("artifacts") / "model_metrics" / "baseline_metrics_2d.json"
+OUTPUT = Path("artifacts") / "model_metrics" / "baseline_metrics_2d5.json"
 
 # File path for saving the final model checkpoint (.pt).
-MODEL_OUTPUT = Path("artifacts") / "models" / "baseline_model_2d.pt"
+MODEL_OUTPUT = Path("artifacts") / "models" / "baseline_model_2d5.pt"
 
 # -----------------------------
 # Weights & Biases logging
