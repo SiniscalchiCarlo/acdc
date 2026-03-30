@@ -188,7 +188,7 @@ def get_model(config):
     elif model_name == '25DATTUNET':
         return build_model_attention25D()
     else:
-        available = ["UNET", "ATTUNET", "SEGRESNET"]
+        available = ["UNET", "ATTUNET", "SEGRESNET", "25DATTUNET"]
         raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
 
 
@@ -467,6 +467,21 @@ def main() -> None:
     )
 
     model = get_model(cfg).to(device)
+    # Guard: verify model input channels match the preprocessed data
+    _MULTICHANNEL_MODELS = {"25DATTUNET"}
+    _expected_in_channels = 3 if cfg.MODEL in _MULTICHANNEL_MODELS else 1
+    _sample = items[0]
+    _probe = np.load(_sample["sample"])
+    _actual_channels = _probe["image"].shape[0]
+    if _actual_channels != _expected_in_channels:
+        raise RuntimeError(
+            f"Model '{cfg.MODEL}' expects {_expected_in_channels} input channel(s), "
+            f"but preprocessed data has {_actual_channels}. "
+            f"Check that PREPROCESSED_ROOT points to the correct dataset "
+            f"('preprocessed_2d5_path' for 2.5D, 'preprocessed_2d_path' for 2D)."
+        )
+    # END of GUARD
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,

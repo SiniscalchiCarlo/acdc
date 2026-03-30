@@ -183,11 +183,14 @@ def build_preprocessed_augment_transform(
 def build_preprocessed_train_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and apply online augmentation."""
+    """Load offline-preprocessed 2D slices and apply online augmentation.
+    
+    LoadPreprocessedSliceD already returns image [3, H, W] and label [1, H, W],
+    so EnsureChannelFirstd must NOT be used here.
+    """
     return Compose(
         [
             LoadPreprocessedSliceD(),
-            EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
             EnsureTyped(keys=["image", "label"]),
             build_preprocessed_augment_transform(patch_size=patch_size),
         ]
@@ -197,17 +200,17 @@ def build_preprocessed_train_transform(
 def build_preprocessed_val_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and apply final padding."""
-    transforms: list[Transform] = [
-        LoadPreprocessedSliceD(),
-        EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel"),
-        EnsureTyped(keys=["image", "label"]),
-    ]
-    transforms.extend(
+    """Load offline-preprocessed 2D slices and apply final padding.
+    
+    LoadPreprocessedSliceD already returns image [3, H, W] and label [1, H, W],
+    so EnsureChannelFirstd must NOT be used here.
+    """
+    return Compose(
         [
+            LoadPreprocessedSliceD(),
+            EnsureTyped(keys=["image", "label"]),
             SpatialPadd(keys=["image", "label"], spatial_size=patch_size),
             DivisiblePadd(keys=["image", "label"], k=16),
             EnsureTyped(keys=["image", "label"]),
         ]
     )
-    return Compose(transforms)
