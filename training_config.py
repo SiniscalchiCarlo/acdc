@@ -7,7 +7,6 @@ from config import (
     preprocessed_2d_path,
     seed_2d,
     target_spacing_2d,
-    preprocessed_2d5_path
 )
 
 # -----------------------------
@@ -34,7 +33,7 @@ MODEL = '25DATTUNET'
 # Data / preprocessing
 # -----------------------------
 # Path to offline preprocessed dataset. If `None`, raw data will be preprocessed on-the-fly.
-PREPROCESSED_ROOT = Path(preprocessed_2d5_path)
+PREPROCESSED_ROOT = Path(preprocessed_2d_path)
 
 # Patch / crop size used by spatial transforms: (height, width).
 PATCH_SIZE = patch_size_2d
