@@ -52,27 +52,31 @@ class ExtractSliceTripletd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, Any]) -> dict[Hashable, Any]:
         d = dict(data)
-        if self.index_key not in d:
-            raise KeyError(f"Missing required slice index key: {self.index_key}")
-
         idx = int(d[self.index_key])
 
+        # 1. Handle Images: Stack 3 slices to create 2.5D input [3, H, W]
         for key in self.image_keys:
-            tensor = d[key]                    # [C, H, W, D]
+            tensor = d[key]                    # Expected [C, H, W, D]
             n_slices = tensor.shape[-1]
-            prev_idx  = max(idx - 1, 0)
-            next_idx  = min(idx + 1, n_slices - 1)
-            # Stack along channel dim → [3, H, W]
-            d[key] = np.concatenate(
-                [tensor[..., prev_idx],
-                 tensor[..., idx],
-                 tensor[..., next_idx]],
+            prev_idx = max(idx - 1, 0)
+            next_idx = min(idx + 1, n_slices - 1)
+            
+            # Use np.stack to combine the center slice with its neighbors
+            # We take the first channel [0] assuming grayscale input
+            d[key] = np.stack(
+                [tensor[0, ..., prev_idx], 
+                tensor[0, ..., idx], 
+                tensor[0, ..., next_idx]],
                 axis=0,
             )
 
+        # 2. Handle Labels: Extract only the center slice [1, H, W]
         for key in self.label_keys:
             tensor = d[key]                    # [C, H, W, D]
-            d[key] = tensor[..., idx]          # [C, H, W] — center only
+            # Slicing with idx:idx+1 keeps the channel dimension intact
+            d[key] = tensor[..., idx]
+            if d[key].ndim == 2:               # Safety check for squeezed dims
+                d[key] = d[key][None, ...]
 
         return d
 

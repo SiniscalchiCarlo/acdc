@@ -45,8 +45,9 @@ def main() -> None:
     manifest_items: list[dict[str, object]] = []
     for item in items:
         transformed = transform(item)
-        image = np.asarray(transformed["image"])[0].astype(np.float32, copy=False)
-        label = np.asarray(transformed["label"])[0].astype(np.int16, copy=False)
+        # FIX: Do not index [0] for images, as 2.5D requires all 3 channels
+        image = np.asarray(transformed["image"]).astype(np.float32, copy=False)
+        label = np.asarray(transformed["label"]).astype(np.int16, copy=False)
 
         sample_name = f"{item['patient']}_{item['phase']}_frame{item['frame']:02d}_slice{item['slice_idx']:02d}.npz"
         sample_path = samples_dir / sample_name
@@ -71,6 +72,7 @@ def main() -> None:
             "include_background_slices": INCLUDE_BACKGROUND_SLICES,
             "min_label_pixels": MIN_LABEL_PIXELS,
             "output_dir": str(output_dir),
+            "triplet_slices": True,
         },
         "num_items": len(manifest_items),
         "items": manifest_items,

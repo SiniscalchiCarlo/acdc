@@ -238,11 +238,16 @@ def build_model_residual() -> SegResNet:
         blocks_up=(1, 1, 1),
     )
 
-
 def build_post_transforms() -> tuple[Compose, Compose]:
-    """Build post-processing transforms for predictions and labels before Dice."""
-    post_pred = Compose([EnsureType(), AsDiscrete(argmax=True, to_onehot=4)])
-    post_label = Compose([EnsureType(), AsDiscrete(to_onehot=4)])
+    # Ensure background is included in one-hot for the DiceMetric
+    post_pred = Compose([
+        EnsureType(), 
+        AsDiscrete(argmax=True, to_onehot=4)
+    ])
+    post_label = Compose([
+        EnsureType(), 
+        AsDiscrete(to_onehot=4)
+    ])
     return post_pred, post_label
 
 
@@ -254,13 +259,17 @@ def compute_class_weights(val_dice_per_class: list[float], device: torch.device)
     so they sum to the number of foreground classes.
     """
     dice_scores = torch.tensor(val_dice_per_class, dtype=torch.float32)
+    
     # Clamp to avoid division by zero if Dice is 1.0
-    weights = 1.0 - dice_scores.clamp(0.0, 0.999)
+    weights = 1.0 - dice_scores.clamp(0.0, 0.9) 
     # Normalize so foreground weights sum to number of classes
-    weights = weights / weights.sum() * len(dice_scores)
-    # Prepend background weight of 1.0
-    background_weight = torch.ones(1, dtype=torch.float32)
+    weights = weights / (weights.sum() + 1e-6) * len(dice_scores)
+    
+    # FIX: Background weight should usually be slightly lower than 1.0 
+    # if you want to force focus on small structures like the Myocardium.
+    background_weight = torch.tensor([0.5], dtype=torch.float32) 
     return torch.cat([background_weight, weights], dim=0).to(device)
+
 
 # Try CenterlineDiceLoss or Inter-Slice Centroid Smoothness Loss? 
 # Problem with inter-slice smoothness = shuffle=True so random batches often do not contain many truly consecutive slices.
