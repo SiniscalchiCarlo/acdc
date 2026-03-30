@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 
 # Allow the script to be executed from the repository root without installing the package.
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +44,7 @@ def main() -> None:
     samples_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_items: list[dict[str, object]] = []
-    for item in items:
+    for item in tqdm(items, desc="Preprocessing", unit="slice"):
         transformed = transform(item)
         image = np.asarray(transformed["image"])[0].astype(np.float32, copy=False)
         label = np.asarray(transformed["label"])[0].astype(np.int16, copy=False)

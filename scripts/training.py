@@ -496,7 +496,7 @@ def main() -> None:
     print(f"Device: {device}")
     print(f"Train slices: {len(train_items)} | Val slices: {len(val_items)}")
 
-    for epoch in range(1, cfg.EPOCHS + 1):
+    for epoch in tqdm(range(1, cfg.EPOCHS + 1), desc="Training", unit="epoch"):
         epochs_run = epoch
         epoch_start_time = time.perf_counter()
         if torch.cuda.is_available():
