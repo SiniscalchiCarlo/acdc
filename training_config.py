@@ -73,11 +73,11 @@ NUM_WORKERS = 10
 # If True, DataLoader will use pinned memory to accelerate CUDA transfers.
 PIN_MEMORY = True
 
-# Fraction of training dataset to cache in memory (0.0 to 1.0). 1.0 caches all.
-CACHE_RATE_TRAIN = 1.0
+# Fraction of training dataset to cache in memory (0.0 to 1.0). 1.0 caches all. Set to 0.1 and 0.1 if using optuna to avoid memory issues.
+CACHE_RATE_TRAIN = 0
 
 # Fraction of validation dataset to cache in memory.
-CACHE_RATE_VAL = 1.0
+CACHE_RATE_VAL = 0
 
 # -----------------------------
 # Scheduler / early stopping

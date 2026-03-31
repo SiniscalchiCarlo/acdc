@@ -44,34 +44,8 @@ EARLY_STOP_PATIENCE = 10  # stop if no improvement in N trials
 # Warm start
 # Note: Use a model checkpoint that matches the architecture (e.g., 25DATTUNET for 2.5D or standard for 2D)
 # Set to None to start from scratch
-# PRETRAINED_MODEL_PATH = Path("artifacts") / "models" / "baseline_model_2d5.pt"
 PRETRAINED_MODEL_PATH = Path("artifacts") / "models" / "ATTENUNET_2.5D.pt"
-# -----------------------------
-# Build data once
-# -----------------------------
-manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
-train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
-train_transform = build_preprocessed_train_transform(patch_size=cfg.PATCH_SIZE)
-val_transform = build_preprocessed_val_transform(patch_size=cfg.PATCH_SIZE)
-
-collate_fn = pad_list_data_collate
-
-# Build data loaders once (reused across all trials)
-train_loader, val_loader = build_loaders(
-    train_items=train_items,
-    val_items=val_items,
-    train_transform=train_transform,
-    val_transform=val_transform,
-    batch_size=cfg.BATCH_SIZE,
-    num_workers=cfg.NUM_WORKERS,
-    cache_rate_train=cfg.CACHE_RATE_TRAIN,
-    cache_rate_val=cfg.CACHE_RATE_VAL,
-    seed=cfg.SEED,
-    pin_memory=cfg.PIN_MEMORY,
-    collate_fn=collate_fn,
-)
 
 # -----------------------------
 # Objective
@@ -105,7 +79,7 @@ def objective(trial):
 
     # Start with equal weights for all 4 classes
     class_weights = torch.ones(4, dtype=torch.float32).to(device)
-    loss_fn = build_loss_fn(class_weights)  # respects config LOSS_FUNCTION setting
+    loss_fn = build_loss_fn(class_weights)
     # Override loss function lambdas with trial suggestions
     if hasattr(loss_fn, 'lambda_dice'):
         loss_fn.lambda_dice = lambda_dice
@@ -115,22 +89,22 @@ def objective(trial):
         loss_fn.lambda_focal = lambda_ce
 
     best_hd95 = float("inf")
-    
+
     # Train for cfg.EPOCHS with progress bar per trial
-    for epoch in tqdm(range(cfg.EPOCHS), desc=f"Trial {trial.number+1}/{MAX_TRIALS}", unit="epoch", leave=True):
+    for epoch in tqdm(range(cfg.EPOCHS), desc=f"Trial {trial.number+1}/{MAX_TRIALS}", unit="epoch", leave=False):
         train_one_epoch(model, train_loader, optimizer, loss_fn, device, max_batches=None)
         val_metrics = validate(model, val_loader, loss_fn, device, max_batches=None)
 
         trial.report(val_metrics["val_dice"], epoch)
-        
+
         # Track the best HD95 seen so far (lower is better)
         if val_metrics["val_hd95"] < best_hd95:
             best_hd95 = val_metrics["val_hd95"]
             trial.set_user_attr("best_val_hd95", best_hd95)
-        
+
         # Update scheduler
         scheduler.step(val_metrics["val_dice"])
-        
+
         # Dynamically update class weights if enabled
         if cfg.DYNAMIC_CLASS_WEIGHTS:
             class_weights = compute_class_weights(val_metrics["val_dice_per_class"], device)
@@ -140,6 +114,7 @@ def objective(trial):
             raise optuna.exceptions.TrialPruned()
 
     return val_metrics["val_dice"]
+
 
 # -----------------------------
 # Early stopping callback
@@ -155,7 +130,7 @@ class EarlyStoppingCallback:
         # Only count completed trials for early stopping (ignore pruned ones)
         if trial.state != optuna.trial.TrialState.COMPLETE:
             return
-        
+
         if study.best_value is None:
             return
 
@@ -169,10 +144,40 @@ class EarlyStoppingCallback:
             print(f"\nStopping early: no improvement in {self.patience} completed trials.")
             study.stop()
 
+
 # -----------------------------
-# Run study
+# Entry point — all data/study init is guarded here
+# so that Windows multiprocessing workers do NOT re-run
+# this code when they re-import the module on spawn.
 # -----------------------------
 if __name__ == "__main__":
+
+    # Build data once
+    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
+    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
+
+    train_transform = build_preprocessed_train_transform(patch_size=cfg.PATCH_SIZE)
+    val_transform = build_preprocessed_val_transform(patch_size=cfg.PATCH_SIZE)
+
+    collate_fn = pad_list_data_collate
+
+    # Build data loaders once (reused across all trials)
+    train_loader, val_loader = build_loaders(
+        train_items=train_items,
+        val_items=val_items,
+        train_transform=train_transform,
+        val_transform=val_transform,
+        batch_size=cfg.BATCH_SIZE,
+        num_workers=cfg.NUM_WORKERS,
+        cache_rate_train=cfg.CACHE_RATE_TRAIN,
+        cache_rate_val=cfg.CACHE_RATE_VAL,
+        seed=cfg.SEED,
+        pin_memory=cfg.PIN_MEMORY,
+        collate_fn=collate_fn,
+    )
+
+    # Run study
     storage = "sqlite:///optuna_study.db"
 
     study = optuna.create_study(
@@ -191,18 +196,26 @@ if __name__ == "__main__":
         "lambda_ce": cfg.LAMBDA_CE,
     })
 
+    trial_bar = tqdm(total=MAX_TRIALS, desc="Optuna Trials", unit="trial", position=0)
+
+    def optuna_callback(study, trial):
+        trial_bar.update(1)
+        EarlyStoppingCallback(EARLY_STOP_PATIENCE)(study, trial)
+
     study.optimize(
         objective,
         n_trials=MAX_TRIALS,
         timeout=TIMEOUT,
-        callbacks=[EarlyStoppingCallback(EARLY_STOP_PATIENCE)],
+        callbacks=[optuna_callback],
     )
 
-    print("\n" + "="*60)
+    trial_bar.close()
+
+    print("\n" + "=" * 60)
     print(f"Best trial (Trial {study.best_trial.number}):")
     print(f"  val_dice: {study.best_trial.value:.6f}")
     print(f"  best_val_hd95: {study.best_trial.user_attrs.get('best_val_hd95', 'N/A')}")
     print(f"  Params:")
     for key, val in study.best_trial.params.items():
         print(f"    {key}: {val}")
-    print("="*60)
+    print("=" * 60)
