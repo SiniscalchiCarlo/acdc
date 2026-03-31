@@ -100,8 +100,8 @@ SCHEDULER_MIN_LR = 1e-6
 # -----------------------------
 # Loss function
 # -----------------------------
-LAMBDA_DICE = 1.33  # weight of Dice loss component optuna for DICE_FOCAL
-LAMBDA_CE = 0.49    # weight of Cross Entropy loss component optuna for DICE_FOCAL
+LAMBDA_DICE = 1.33  # weight of Dice loss component optuna for DICE_(FOCAL)
+LAMBDA_CE = 0.49    # weight of Cross Entropy loss component optuna for DICE_(FOCAL)
 
 # LAMBDA_DICE = 1.0  # weight of Dice loss component
 # LAMBDA_CE = 1.0    # weight of Cross Entropy loss or Focal loss component
