@@ -50,8 +50,8 @@ MIN_LABEL_PIXELS = min_label_pixels_2d
 # -----------------------------
 # Training hyperparameters
 # -----------------------------
-# Total number of training epochs to run.
-EPOCHS = 100
+# Total number of training epochs to run. Set to 30 if using optuna to avoid long training times. Set to 100 for a full run.
+EPOCHS = 30
 
 # Number of samples per training batch.
 BATCH_SIZE = 32
