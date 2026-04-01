@@ -36,7 +36,7 @@ import training_config as cfg
 # -----------------------------
 # Configurable stopping criteria
 # -----------------------------
-MAX_TRIALS = 50
+MAX_TRIALS = 75
 TIMEOUT = 60 * 60 * 4  # 4 hours
 EARLY_STOP_PATIENCE = 10  # stop if no improvement in N trials
 
@@ -183,18 +183,18 @@ if __name__ == "__main__":
     study = optuna.create_study(
         direction="maximize",
         storage=storage,
-        study_name="acdc_segmentation",
+        study_name="acdc_segmentation_2.5D",
         load_if_exists=True,
         pruner=MedianPruner(n_startup_trials=5, n_warmup_steps=3),
     )
 
     # Enqueue initial trial with config-aligned defaults
-    study.enqueue_trial({
-        "weight_decay": cfg.WEIGHT_DECAY,
-        "learning_rate": cfg.LR,
-        "lambda_dice": cfg.LAMBDA_DICE,
-        "lambda_ce": cfg.LAMBDA_CE,
-    })
+    #study.enqueue_trial({
+   #     "weight_decay": cfg.WEIGHT_DECAY,
+   #     "learning_rate": cfg.LR,
+    #    "lambda_dice": cfg.LAMBDA_DICE,
+   #     "lambda_ce": cfg.LAMBDA_CE,
+    #})
 
     trial_bar = tqdm(total=MAX_TRIALS, desc="Optuna Trials", unit="trial", position=0)
 

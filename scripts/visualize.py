@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import training as cfg
+import training_config as cfg
 from training import get_device, get_model
 from src.load_data_2D import (
     build_preprocessed_2d_list,
@@ -30,10 +30,10 @@ from monai.data import pad_list_data_collate
 NUM_IMAGES = 5
 
 # Path to the trained model checkpoint to load.
-MODEL_OUTPUT = Path("artifacts") / "models" / "Baseline_UNET.pt"
+MODEL_OUTPUT = Path("artifacts") / "models" / "ATTENUNET_2.5D.pt"
 
 # Directory where segmentation visualizations will be saved.
-OUTPUT_DIR = Path("artifacts") / "segmentation_visuals" / "baseline_unet"
+OUTPUT_DIR = Path("artifacts") / "segmentation_visuals" / "baseline_attenunet_2.5D"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # -----------------------------
@@ -118,7 +118,7 @@ def main() -> None:
     # Load preprocessed validation data
     manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
     items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
-    _, val_items = split_by_patient(items, n_splits=cfg.N_SPLITS, fold=cfg.FOLD)
+    _, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
     val_transform = build_preprocessed_val_transform(patch_size=cfg.PATCH_SIZE)
     _, val_loader = build_loaders(
@@ -147,6 +147,10 @@ def main() -> None:
             logits = model(images)
             preds = torch.stack([post_pred(x) for x in
                                  torch.unbind(logits, dim=0)])
+            remaining = NUM_IMAGES - images_shown
+            images = images[:remaining]
+            labels = labels[:remaining]
+            preds = preds[:remaining]
             visualize_batch(images, labels, preds, batch_idx, OUTPUT_DIR)
             images_shown += images.shape[0]
 
