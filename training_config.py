@@ -50,19 +50,17 @@ MIN_LABEL_PIXELS = min_label_pixels_2d
 # -----------------------------
 # Training hyperparameters
 # -----------------------------
-# Total number of training epochs to run. Set to 30 if using optuna to avoid long training times. Set to 100 for a full run.
-EPOCHS = 30
+# Total number of training epochs to run. Set to 15 if using optuna to avoid long training times. Set to 100 for a full run.
+EPOCHS = 100
 
 # Number of samples per training batch.
 BATCH_SIZE = 32
 
 # Initial learning rate for the optimizer (Adam).
-LR = 1e-3
-# LR = 2.1e-4 # Optuna suggested value for DICE_FOCAL
+LR = 1e-3 # Optuna suggested value
 
 # Weight decay (L2 regularization) applied by the optimizer.
-WEIGHT_DECAY = 2e-5 
-# WEIGHT_DECAY = 3.5e-5 # Optuna suggested value for DICE_FOCAL
+WEIGHT_DECAY = 2.8e-5 # Optuna suggested value
 
 # -----------------------------
 # Dataloader / performance
@@ -100,8 +98,11 @@ SCHEDULER_MIN_LR = 1e-6
 # -----------------------------
 # Loss function
 # -----------------------------
-LAMBDA_DICE = 1.33  # weight of Dice loss component optuna for DICE_(FOCAL)
-LAMBDA_CE = 0.49    # weight of Cross Entropy loss component optuna for DICE_(FOCAL)
+# LAMBDA_DICE = 1.33  # weight of Dice loss component optuna for DICE_(FOCAL)
+# LAMBDA_CE = 0.49    # weight of Cross Entropy loss component optuna for DICE_(FOCAL)
+
+LAMBDA_DICE = 1.5  # Optuna suggested value
+LAMBDA_CE = 0.9    # Optuna suggested value
 
 # LAMBDA_DICE = 1.0  # weight of Dice loss component
 # LAMBDA_CE = 1.0    # weight of Cross Entropy loss or Focal loss component
