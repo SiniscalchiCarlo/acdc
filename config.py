@@ -8,6 +8,7 @@ load_dotenv()
 dataset_path = os.getenv("DATASET_PATH")
 preprocessed_2d_path = os.getenv("PREPROCESSED_2D_PATH", "artifacts/preprocessed_2d")
 model_output_dir = os.getenv("MODEL_OUTPUT_DIR", "artifacts/models")
+test_path = os.getenv("TEST_PATH")
 
 target_spacing_2d = (1.25, 1.25, -1.0)
 patch_size_2d = (320, 320)

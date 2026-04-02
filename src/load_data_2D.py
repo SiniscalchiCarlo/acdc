@@ -46,6 +46,7 @@ def split_by_patient(
 
 
 def build_acdc_list(
+    dataset_root: str | Path | None = None,
     include_background_slices: bool = True,
     min_label_pixels: int = 1,
 ) -> list[dict[str, Any]]:
@@ -56,7 +57,7 @@ def build_acdc_list(
     still happen by patient because the patient id is attached to every slice.
     """
 
-    root = Path(dataset_path)
+    root = Path(dataset_path if dataset_root is None else dataset_root)
     patients = sorted([p for p in root.iterdir() if p.is_dir() and p.name.startswith("patient")])
 
     items: list[dict[str, Any]] = []
