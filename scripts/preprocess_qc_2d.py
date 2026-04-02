@@ -40,6 +40,13 @@ OUTPUT_JSON = Path(preprocess_qc_output_json_2d)
 OUTPUT_FIGURES = Path(preprocess_qc_output_figures_2d)
 
 
+def select_visualization_slice(image: np.ndarray) -> np.ndarray:
+    """Return the center channel for 2.5D inputs, or the array itself for 2D inputs."""
+    if image.ndim == 3:
+        return image[image.shape[0] // 2]
+    return image
+
+
 def save_figure(
     output_path: Path,
     title: str,
@@ -119,9 +126,9 @@ def main() -> None:
 
         raw_image = raw_image_volume[..., slice_idx]
         raw_label = raw_label_volume[..., slice_idx]
-        processed_image = np.asarray(processed["image"])[0]
+        processed_image = select_visualization_slice(np.asarray(processed["image"]))
         processed_label = np.asarray(processed["label"])[0]
-        aug_image = np.asarray(augmented["image"])[0]
+        aug_image = select_visualization_slice(np.asarray(augmented["image"]))
         aug_label = np.asarray(augmented["label"])[0]
 
         case_warnings: list[str] = []
