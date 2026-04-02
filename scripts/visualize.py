@@ -50,6 +50,14 @@ CLASS_COLORS = {
 CLASS_NAMES = {1: "RV", 2: "MYO", 3: "LV"}
 
 
+def select_visualization_slice(image: torch.Tensor) -> np.ndarray:
+    """Return the center channel for 2.5D inputs, or the array itself for 2D inputs."""
+    image_np = image.cpu().numpy()
+    if image_np.ndim == 3:
+        return image_np[image_np.shape[0] // 2]
+    return image_np
+
+
 def load_trained_model(model_path: Path, device: torch.device) -> torch.nn.Module:
     """Load a trained model checkpoint from disk and set it to evaluation mode."""
     model = get_model(cfg).to(device)
@@ -72,14 +80,15 @@ def visualize_batch(
     batch_size = images.shape[0]
     for i in range(batch_size):
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        display_image = select_visualization_slice(images[i])
 
         # Original image
-        axes[0].imshow(images[i, 0].cpu().numpy(), cmap="gray")
+        axes[0].imshow(display_image, cmap="gray")
         axes[0].set_title("Input MRI")
         axes[0].axis("off")
 
         # Ground truth contours overlaid on the image
-        axes[1].imshow(images[i, 0].cpu().numpy(), cmap="gray")
+        axes[1].imshow(display_image, cmap="gray")
         gt = labels[i, 0].cpu().numpy().squeeze()
         for class_idx, color in CLASS_COLORS.items():
             mask = gt == class_idx
@@ -89,7 +98,7 @@ def visualize_batch(
         axes[1].axis("off")
 
         # Predicted contours overlaid on the image
-        axes[2].imshow(images[i, 0].cpu().numpy(), cmap="gray")
+        axes[2].imshow(display_image, cmap="gray")
         pred = preds[i].cpu().numpy().squeeze()
         for class_idx, color in CLASS_COLORS.items():
             mask = pred == class_idx
