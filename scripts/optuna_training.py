@@ -62,6 +62,8 @@ def objective(trial):
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-3, log=True)
     lambda_dice = trial.suggest_float("lambda_dice", 0.3, 2.0)
     lambda_ce = trial.suggest_float("lambda_ce", 0.3, 2.0)
+    batch_size_candidates = sorted(set([max(1, cfg.BATCH_SIZE // 2), cfg.BATCH_SIZE, cfg.BATCH_SIZE * 2]))
+    batch_size = trial.suggest_categorical("batch_size", batch_size_candidates)
 
     device = get_device()
     model = get_model(cfg).to(device)
@@ -84,7 +86,7 @@ def objective(trial):
         val_items=val_items,
         train_transform=train_transform,
         val_transform=val_transform,
-        batch_size=cfg.BATCH_SIZE,
+        batch_size=batch_size,
         num_workers=cfg.NUM_WORKERS,
         cache_rate_train=cfg.CACHE_RATE_TRAIN,
         cache_rate_val=cfg.CACHE_RATE_VAL,
@@ -146,6 +148,7 @@ if __name__ == "__main__":
         "weight_decay": 1e-4,
         "lambda_dice": 1.0,
         "lambda_ce": 1.0,
+        "batch_size": cfg.BATCH_SIZE,
     })
 
     study.optimize(
