@@ -25,10 +25,12 @@ from monai.transforms import (
     Transform,
 )
 
-from config import patch_size_2d, target_spacing_2d
+from config import patch_size_2d, preprocessing_mode as default_preprocessing_mode, target_spacing_2d
+from src.pipeline import preprocessing_mode_uses_triplet_slices
 
 DEFAULT_TARGET_SPACING_2D = target_spacing_2d
 DEFAULT_PATCH_SIZE_2D = patch_size_2d
+DEFAULT_PREPROCESSING_MODE = default_preprocessing_mode
 
 class ExtractSliceTripletd(MapTransform):
     """Extract 3 consecutive slices: [idx-1, idx, idx+1].
@@ -102,7 +104,7 @@ class ExtractSliceByIndexd(MapTransform):
 
 
 class LoadPreprocessedSliceD(Transform):
-    """Load one offline-preprocessed 2D sample from a `.npz` file."""
+    """Load one offline-preprocessed slice sample from a `.npz` file."""
 
     def __init__(self, sample_key: str = "sample"):
         self.sample_key = sample_key
@@ -118,14 +120,28 @@ class LoadPreprocessedSliceD(Transform):
 def build_preprocessing_transform(
     target_spacing: tuple[float, float, float] = DEFAULT_TARGET_SPACING_2D,
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
+    preprocessing_mode: str = DEFAULT_PREPROCESSING_MODE,
 ) -> Compose:
     """
-    Build deterministic preprocessing for slice-based 2D training.
+    Build deterministic preprocessing for slice-based training.
     This preprocessing is performed in advance to speed up training time.
 
     The source files remain 3D ACDC volumes, but each dataset item carries a
     `slice_idx` and is converted into a `[C, H, W]` tensor before augmentation.
+    The number of channels depends on `preprocessing_mode`:
+    - `2d` -> one slice channel
+    - `2.5d` -> three adjacent slices stacked as channels
     """
+    if preprocessing_mode_uses_triplet_slices(preprocessing_mode):
+        slice_extractor: Transform = ExtractSliceTripletd(keys=["image"], label_keys=["label"], index_key="slice_idx")
+    else:
+        slice_extractor = Compose(
+            [
+                ExtractSliceByIndexd(keys=["image"], index_key="slice_idx"),
+                ExtractSliceByIndexd(keys=["label"], index_key="slice_idx"),
+            ]
+        )
+
     transforms: list[Transform] = [
         LoadImaged(keys=["image", "label"]),
         EnsureChannelFirstd(keys=["image", "label"]),
@@ -136,7 +152,7 @@ def build_preprocessing_transform(
             mode=("bilinear", "nearest"),
         ),
         NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
-        ExtractSliceTripletd(keys=["image"], label_keys=["label"], index_key="slice_idx"),
+        slice_extractor,
     ]
     transforms.extend(
         [
@@ -151,7 +167,7 @@ def build_preprocessing_transform(
 def build_preprocessed_augment_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Apply online augmentation to already-loaded preprocessed 2D slices."""
+    """Apply online augmentation to already-loaded preprocessed slice samples."""
     return Compose(
         [
             RandAffined(
@@ -187,9 +203,9 @@ def build_preprocessed_augment_transform(
 def build_preprocessed_train_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and apply online augmentation.
+    """Load offline-preprocessed slice samples and apply online augmentation.
     
-    LoadPreprocessedSliceD already returns image [3, H, W] and label [1, H, W],
+    LoadPreprocessedSliceD already returns image [C, H, W] and label [1, H, W],
     so EnsureChannelFirstd must NOT be used here.
     """
     return Compose(
@@ -204,9 +220,9 @@ def build_preprocessed_train_transform(
 def build_preprocessed_val_transform(
     patch_size: tuple[int, int] = DEFAULT_PATCH_SIZE_2D,
 ) -> Compose:
-    """Load offline-preprocessed 2D slices and apply final padding.
+    """Load offline-preprocessed slice samples and apply final padding.
     
-    LoadPreprocessedSliceD already returns image [3, H, W] and label [1, H, W],
+    LoadPreprocessedSliceD already returns image [C, H, W] and label [1, H, W],
     so EnsureChannelFirstd must NOT be used here.
     """
     return Compose(

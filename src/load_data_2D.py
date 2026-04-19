@@ -81,11 +81,11 @@ def build_acdc_list(
     return items
 
 
-def build_preprocessed_2d_list(
+def build_preprocessed_dataset_list(
     preprocessed_root: str | Path,
 ) -> list[dict[str, Any]]:
-    """Load a preprocessed 2D dataset manifest from disk."""
-    manifest = load_preprocessed_2d_manifest(preprocessed_root=preprocessed_root)
+    """Load a preprocessed slice dataset manifest from disk."""
+    manifest = load_preprocessed_manifest(preprocessed_root=preprocessed_root)
     items = manifest.get("items", [])
     if not items:
         raise RuntimeError(f"No items found in preprocessed manifest: {Path(preprocessed_root) / 'manifest.json'}")
@@ -102,7 +102,7 @@ def build_preprocessed_2d_list(
     return normalized_items
 
 
-def load_preprocessed_2d_manifest(
+def load_preprocessed_manifest(
     preprocessed_root: str | Path,
 ) -> dict[str, Any]:
     """Load and return the full preprocessed manifest, including stored config."""
