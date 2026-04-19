@@ -6,9 +6,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 dataset_path = os.getenv("DATASET_PATH")
-preprocessed_2d_path = os.getenv("PREPROCESSED_2D_PATH", "artifacts/preprocessed_2d")
+preprocessed_data_path = os.getenv(
+    "PREPROCESSED_DATA_PATH",
+    os.getenv("PREPROCESSED_2D_PATH", "artifacts/preprocessed_data"),
+)
 model_output_dir = os.getenv("MODEL_OUTPUT_DIR", "artifacts/models")
 test_path = os.getenv("TEST_PATH")
+
+# Slice preprocessing mode used across preprocess, train, and test.
+# Options: "2d" | "2.5d"
+preprocessing_mode = "2.5d"
 
 target_spacing_2d = (1.25, 1.25, -1.0)
 patch_size_2d = (320, 320)

@@ -4,7 +4,7 @@ from config import (
     include_background_slices_2d,
     min_label_pixels_2d,
     patch_size_2d,
-    preprocessed_2d_path,
+    preprocessed_data_path,
     seed_2d,
     target_spacing_2d,
 )
@@ -35,7 +35,7 @@ SCHEDULER_MIN_LR = 1e-6
 MAX_TRAIN_BATCHES = None
 MAX_VAL_BATCHES = None
 
-PREPROCESSED_ROOT = Path(preprocessed_2d_path)
+PREPROCESSED_ROOT = Path(preprocessed_data_path)
 OUTPUT = Path("artifacts") / "baseline_metrics_2d.json"
 MODEL_OUTPUT = Path("artifacts") / "baseline_model_2d.pt"
 

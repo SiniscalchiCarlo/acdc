@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
 import test_config as cfg
 from scripts.training import CLASS_NAMES, get_device, get_model, print_device_info, validate
 from src.load_data_2D import build_acdc_list, build_loaders
+from src.pipeline import expected_input_channels_for_model, validate_model_preprocessing_compatibility
 from src.transforms_2D import build_preprocessing_transform
 
 
@@ -36,8 +37,7 @@ def validate_config() -> Path:
 
 def assert_input_channels_match(model: torch.nn.Module) -> None:
     """Fail fast when the configured architecture does not match the checkpoint weights."""
-    multichannel_models = {"25DATTUNET"}
-    expected_in_channels = 3 if cfg.MODEL in multichannel_models else 1
+    expected_in_channels = expected_input_channels_for_model(cfg.MODEL)
     actual_in_channels = int(getattr(model, "in_channels", expected_in_channels))
     if actual_in_channels != expected_in_channels:
         raise RuntimeError(
@@ -47,11 +47,31 @@ def assert_input_channels_match(model: torch.nn.Module) -> None:
         )
 
 
+def print_test_run_summary(model_path: Path) -> None:
+    """Print the most important evaluation configuration before heavy work starts."""
+    expected_channels = expected_input_channels_for_model(cfg.MODEL)
+    print("Test configuration:")
+    print(f"  model: {cfg.MODEL}")
+    print(f"  preprocessing_mode: {cfg.PREPROCESSING_MODE}")
+    print(f"  expected_input_channels: {expected_channels}")
+    print(f"  model_path: {model_path}")
+    print(f"  test_root: {cfg.TEST_ROOT}")
+    print(f"  patch_size: {cfg.PATCH_SIZE}")
+    print(f"  target_spacing: {cfg.TARGET_SPACING}")
+    print(f"  include_background_slices: {cfg.INCLUDE_BACKGROUND_SLICES}")
+    print(f"  min_label_pixels: {cfg.MIN_LABEL_PIXELS}")
+    print(f"  batch_size: {cfg.BATCH_SIZE}")
+    print(f"  num_workers: {cfg.NUM_WORKERS}")
+    print(f"  metrics_output: {cfg.OUTPUT}")
+
+
 def main() -> None:
     """Evaluate one saved checkpoint on the raw test set."""
     model_path = validate_config()
+    validate_model_preprocessing_compatibility(cfg.MODEL, cfg.PREPROCESSING_MODE)
     device = get_device()
     print_device_info(device)
+    print_test_run_summary(model_path)
 
     torch.manual_seed(cfg.SEED)
     if torch.cuda.is_available():
@@ -66,6 +86,7 @@ def main() -> None:
     test_transform = build_preprocessing_transform(
         target_spacing=cfg.TARGET_SPACING,
         patch_size=cfg.PATCH_SIZE,
+        preprocessing_mode=cfg.PREPROCESSING_MODE,
     )
     _, val_loader = build_loaders(
         train_items=test_items,

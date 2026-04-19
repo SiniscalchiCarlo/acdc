@@ -1,5 +1,5 @@
 """
-Very simple QC script for the 2D preprocessing.
+Very simple QC script for the slice preprocessing.
 
 It checks a small set of slices, saves a few figures, and writes a tiny JSON
 report with only the information you usually look at first.
@@ -22,6 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from config import (
     patch_size_2d,
+    preprocessing_mode,
     preprocess_qc_limit_2d,
     preprocess_qc_output_figures_2d,
     preprocess_qc_output_json_2d,
@@ -35,6 +36,7 @@ LIMIT = preprocess_qc_limit_2d
 SEED = seed_2d
 TARGET_SPACING = target_spacing_2d
 PATCH_SIZE = patch_size_2d
+PREPROCESSING_MODE = preprocessing_mode
 
 OUTPUT_JSON = Path(preprocess_qc_output_json_2d)
 OUTPUT_FIGURES = Path(preprocess_qc_output_figures_2d)
@@ -95,6 +97,7 @@ def main() -> None:
     preprocess_transform = build_preprocessing_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
+        preprocessing_mode=PREPROCESSING_MODE,
     )
     augment_transform = build_preprocessed_augment_transform(
         patch_size=PATCH_SIZE,

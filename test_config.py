@@ -4,6 +4,7 @@ from config import (
     include_background_slices_2d,
     min_label_pixels_2d,
     patch_size_2d,
+    preprocessing_mode,
     seed_2d,
     target_spacing_2d,
     test_path,
@@ -14,6 +15,10 @@ REPO_ROOT = Path(__file__).resolve().parent
 # Model architecture for the checkpoint you want to test.
 # Options: 'UNET' | 'ATTUNET' | 'SEGRESNET' | '25DATTUNET'
 MODEL = "25DATTUNET"
+
+# Explicit preprocessing mode used when preprocessing the raw test set on the fly.
+# Options: '2d' | '2.5d'
+PREPROCESSING_MODE = preprocessing_mode
 
 # Path to the checkpoint file to evaluate.
 MODEL_PATH = REPO_ROOT / "scripts" / "artifacts" / "models" / "baseline_model_2d5.pt"

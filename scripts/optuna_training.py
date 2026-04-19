@@ -22,10 +22,10 @@ from training import (
     build_loss_fn,
 )
 from src.load_data_2D import (
-    build_preprocessed_2d_list,
-    load_preprocessed_2d_manifest,
-    split_by_patient,
     build_loaders,
+    build_preprocessed_dataset_list,
+    load_preprocessed_manifest,
+    split_by_patient,
 )
 from src.transforms_2D import (
     build_preprocessed_train_transform,
@@ -153,8 +153,8 @@ class EarlyStoppingCallback:
 if __name__ == "__main__":
 
     # Build data once
-    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    manifest = load_preprocessed_manifest(cfg.PREPROCESSED_ROOT)
+    items = build_preprocessed_dataset_list(cfg.PREPROCESSED_ROOT)
     train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
     train_transform = build_preprocessed_train_transform(patch_size=cfg.PATCH_SIZE)

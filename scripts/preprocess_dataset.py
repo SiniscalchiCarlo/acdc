@@ -16,20 +16,23 @@ from config import (
     include_background_slices_2d,
     min_label_pixels_2d,
     patch_size_2d,
-    preprocessed_2d_path,
+    preprocessing_mode,
+    preprocessed_data_path,
     target_spacing_2d,
 )
 from src.load_data_2D import build_acdc_list
+from src.pipeline import preprocessing_mode_uses_triplet_slices
 from src.transforms_2D import build_preprocessing_transform
 
 TARGET_SPACING = target_spacing_2d
 PATCH_SIZE = patch_size_2d
 INCLUDE_BACKGROUND_SLICES = include_background_slices_2d
 MIN_LABEL_PIXELS = min_label_pixels_2d
+PREPROCESSING_MODE = preprocessing_mode
 
 
 def main() -> None:
-    """Precompute deterministic preprocessing for the full 2D dataset."""
+    """Precompute deterministic preprocessing for the full slice dataset."""
     items = build_acdc_list(
         include_background_slices=INCLUDE_BACKGROUND_SLICES,
         min_label_pixels=MIN_LABEL_PIXELS,
@@ -37,9 +40,10 @@ def main() -> None:
     transform = build_preprocessing_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
+        preprocessing_mode=PREPROCESSING_MODE,
     )
 
-    output_dir = Path(preprocessed_2d_path)
+    output_dir = Path(preprocessed_data_path)
     samples_dir = output_dir / "samples"
     samples_dir.mkdir(parents=True, exist_ok=True)
 
@@ -73,7 +77,8 @@ def main() -> None:
             "include_background_slices": INCLUDE_BACKGROUND_SLICES,
             "min_label_pixels": MIN_LABEL_PIXELS,
             "output_dir": str(output_dir),
-            "triplet_slices": True,
+            "preprocessing_mode": PREPROCESSING_MODE,
+            "triplet_slices": preprocessing_mode_uses_triplet_slices(PREPROCESSING_MODE),
         },
         "num_items": len(manifest_items),
         "items": manifest_items,

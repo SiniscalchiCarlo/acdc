@@ -23,9 +23,15 @@ if str(REPO_ROOT) not in sys.path:
 import training_config as cfg
 from src.load_data_2D import (
     build_loaders,
-    build_preprocessed_2d_list,
-    load_preprocessed_2d_manifest,
+    build_preprocessed_dataset_list,
+    load_preprocessed_manifest,
     split_by_patient,
+)
+from src.pipeline import (
+    expected_input_channels_for_model,
+    infer_preprocessing_mode_from_manifest,
+    model_uses_triplet_slices,
+    validate_model_preprocessing_compatibility,
 )
 from src.transforms_2D import (
     build_preprocessed_train_transform,
@@ -176,6 +182,35 @@ def print_device_info(device: torch.device) -> None:
         print("CUDA available: False (running on CPU)")
 
 
+def print_training_run_summary(preprocessing_mode: str) -> None:
+    """Print the most important training configuration before heavy work starts."""
+    expected_channels = expected_input_channels_for_model(cfg.MODEL)
+    print("Training configuration:")
+    print(f"  model: {cfg.MODEL}")
+    print(f"  preprocessing_mode: {preprocessing_mode} (inferred from manifest)")
+    print(f"  expected_input_channels: {expected_channels}")
+    print(f"  preprocessed_root: {cfg.PREPROCESSED_ROOT}")
+    print(f"  patch_size: {cfg.PATCH_SIZE}")
+    print(f"  target_spacing: {cfg.TARGET_SPACING}")
+    print(f"  include_background_slices: {cfg.INCLUDE_BACKGROUND_SLICES}")
+    print(f"  min_label_pixels: {cfg.MIN_LABEL_PIXELS}")
+    print(f"  epochs: {cfg.EPOCHS}")
+    print(f"  batch_size: {cfg.BATCH_SIZE}")
+    print(f"  learning_rate: {cfg.LR}")
+    print(f"  weight_decay: {cfg.WEIGHT_DECAY}")
+    print(f"  loss_function: {cfg.LOSS_FUNCTION}")
+    print(f"  dynamic_class_weights: {cfg.DYNAMIC_CLASS_WEIGHTS}")
+    print(f"  num_workers: {cfg.NUM_WORKERS}")
+    print(f"  cache_rate_train: {cfg.CACHE_RATE_TRAIN}")
+    print(f"  cache_rate_val: {cfg.CACHE_RATE_VAL}")
+    print(f"  model_output: {cfg.MODEL_OUTPUT}")
+    print(f"  metrics_output: {cfg.OUTPUT}")
+    print(f"  wandb_enabled: {cfg.WANDB_ENABLED}")
+    if cfg.WANDB_ENABLED:
+        print(f"  wandb_project: {cfg.WANDB_PROJECT}")
+        print(f"  wandb_mode: {cfg.WANDB_MODE}")
+
+
 def get_model(config):
     model_name = config.MODEL
 
@@ -307,14 +342,14 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
     if not isinstance(saved_config, dict):
         raise RuntimeError("Malformed preprocessed manifest: missing 'config' section.")
 
+    mismatches: list[str] = []
     expected = {
         "target_spacing": list(cfg.TARGET_SPACING),
         "patch_size": list(cfg.PATCH_SIZE),
         "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
         "min_label_pixels": cfg.MIN_LABEL_PIXELS,
-        "triplet_slices": cfg.MODEL in {"25DATTUNET"},  # True for 2.5D, False for 2D
+        "triplet_slices": model_uses_triplet_slices(cfg.MODEL),
     }
-    mismatches: list[str] = []
     for key, expected_value in expected.items():
         actual_value = saved_config.get(key)
         if actual_value != expected_value:
@@ -323,7 +358,7 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
     if mismatches:
         details = "; ".join(mismatches)
         raise RuntimeError(
-            "Preprocessed dataset config does not match train_baseline_2d_config.py. "
+            "Preprocessed dataset config does not match training_config.py. "
             f"Regenerate the offline dataset or align the config. {details}"
         )
 
@@ -440,18 +475,21 @@ def main() -> None:
     """Train and validate a reproducible 2D baseline using config-only settings."""
     device = get_device()
     print_device_info(device)
+    if cfg.PREPROCESSED_ROOT is None:
+        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
+
+    manifest = load_preprocessed_manifest(cfg.PREPROCESSED_ROOT)
+    preprocessing_mode = infer_preprocessing_mode_from_manifest(manifest)
+    validate_model_preprocessing_compatibility(cfg.MODEL, preprocessing_mode)
+    validate_preprocessed_manifest(manifest)
+    print_training_run_summary(preprocessing_mode)
     wandb_run = init_wandb_run(cfg)
     torch.manual_seed(cfg.SEED)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.SEED)
         torch.cuda.reset_peak_memory_stats()
 
-    if cfg.PREPROCESSED_ROOT is None:
-        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
-
-    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-    validate_preprocessed_manifest(manifest)
-    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    items = build_preprocessed_dataset_list(cfg.PREPROCESSED_ROOT)
     train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
     train_transform = build_preprocessed_train_transform(
@@ -478,8 +516,7 @@ def main() -> None:
 
     model = get_model(cfg).to(device)
     # Guard: verify model input channels match the preprocessed data
-    _MULTICHANNEL_MODELS = {"25DATTUNET"}
-    _expected_in_channels = 3 if cfg.MODEL in _MULTICHANNEL_MODELS else 1
+    _expected_in_channels = expected_input_channels_for_model(cfg.MODEL)
     _sample = items[0]
     _probe = np.load(_sample["sample"])
     _actual_channels = _probe["image"].shape[0]
@@ -487,8 +524,7 @@ def main() -> None:
         raise RuntimeError(
             f"Model '{cfg.MODEL}' expects {_expected_in_channels} input channel(s), "
             f"but preprocessed data has {_actual_channels}. "
-            f"Check that PREPROCESSED_ROOT points to the correct dataset "
-            f"('preprocessed_2d5_path' for 2.5D, 'preprocessed_2d_path' for 2D)."
+            "Check that PREPROCESSED_ROOT points to a dataset compatible with the selected model."
         )
     # END of GUARD
 

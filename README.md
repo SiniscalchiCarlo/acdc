@@ -1,58 +1,159 @@
-# VENV and LIBRARIES
-We will use uv, it will handle packages and virtual enviroment:
+# ACDC Segmentation
 
-- A virtual enviroment is like a box were you install all your packager. This way is not installed in all your system. This is good because each project may need different packages versions or can have conficts with other packages installed in the system. This way you have an isolated and easy to replicate enviroment.
+This repository contains a MONAI-based cardiac MRI segmentation workflow for the ACDC dataset. The current pipeline is organized around four steps:
 
-1. create a virtual enviroment if you don't have one: uv venv
-2. every time you need to install packages or run code, you need to be inside your venv. Otherwise:
-- you will install the packages in the whole syste
-- the code will not run because it relies on the packages inside the venv that if it is not activated the code can't see.
-To activate the venv do: source .venv/bin/activate
+1. preprocess the raw dataset into offline slice files
+2. run a lightweight preprocessing Quality and Control script (QC)
+3. train a model on the preprocessed dataset
+4. test a saved checkpoint on a raw test dataset
 
-3. To install a package use uv add .....
-4. Every time you install a package, a line with the package name and version will be added in the pyproject.toml
-Why? This is good because it keeps track of packages and versions needed for the project. This way if i want to get the exact libraries and versions
-of the person who wrote the code i can just use the following command, always inside the venv (so yu have to activate it):
+The preprocessing mode is explicit through `PREPROCESSING_MODE`:
+
+- `2d`: one slice per sample
+- `2.5d`: previous, center, next slice stacked as 3 channels
+
+The preprocessing mode is set in [config.py](/home/carlo/UT/deep_med/acdc/config.py), not in `.env`. The default is `2.5d`, so the default training setup in [training_config.py](/home/carlo/UT/deep_med/acdc/training_config.py) uses `MODEL = "25DATTUNET"`.
+
+**Repository Layout**
+- [config.py](/home/carlo/UT/deep_med/acdc/config.py): global paths, preprocessing defaults, and QC output locations
+- [training_config.py](/home/carlo/UT/deep_med/acdc/training_config.py): training hyperparameters, model choice, and training output paths
+- [test_config.py](/home/carlo/UT/deep_med/acdc/test_config.py): checkpoint path, test dataset path handling, and test output path
+- [scripts/preprocess_dataset.py](/home/carlo/UT/deep_med/acdc/scripts/preprocess_dataset.py): offline preprocessing
+- [scripts/preprocess_qc.py](/home/carlo/UT/deep_med/acdc/scripts/preprocess_qc.py): preprocessing QC with figures and JSON summary
+- [scripts/training.py](/home/carlo/UT/deep_med/acdc/scripts/training.py): training entrypoint
+- [scripts/test_model.py](/home/carlo/UT/deep_med/acdc/scripts/test_model.py): checkpoint evaluation entrypoint
+
+**Setup**
+Run everything from the repository root.
+
+Install dependencies with `uv`:
+
+```bash
 uv sync
-this will syncronize you packages with the one on the pyproject.toml
-5. To run code do: python path/to/pythonFile.py
+```
 
-6. Create a local `.env` in the repository root for machine-specific paths. You can copy `.env.example` and adjust the values:
+Activate the virtual environment:
+
+```bash
+source .venv/bin/activate
+```
+
+Or run commands directly with `uv run python ...` if you prefer not to activate `.venv`.
+
+**Environment Variables**
+Create a local `.env` file in the repository root. The project loads it automatically through `python-dotenv`.
+
+Use `.env.example` as the starting point:
+
 ```dotenv
+# Required: raw ACDC training dataset root
 DATASET_PATH=/path/to/acdc/database/training
-PREPROCESSED_2D_PATH=artifacts/preprocessed_2d
-MODEL_OUTPUT_DIR=artifacts/models
+
+# Required for testing: raw ACDC test dataset root
+TEST_PATH=/path/to/acdc/database/testing
+
+# where offline-preprocessed slices and manifest are written
+PREPROCESSED_DATA_PATH=artifacts/preprocessed_data
+
+# QC report outputs
 PREPROCESS_QC_OUTPUT_JSON_2D=artifacts/preprocess_qc_report_2d.json
 PREPROCESS_QC_OUTPUT_FIGURES_2D=artifacts/preprocess_visual_qc_2d
 ```
 
+What each variable does:
 
+- `DATASET_PATH`: raw training set used by preprocessing and QC
+- `TEST_PATH`: raw test set used by `scripts/test_model.py`
+- `PREPROCESSED_DATA_PATH`: output folder for `.npz` slices plus `manifest.json`
+- `PREPROCESS_QC_OUTPUT_JSON_2D`: JSON summary written by the QC step
+- `PREPROCESS_QC_OUTPUT_FIGURES_2D`: folder with QC figures
 
-# PREPROCESSING
+**Config Files**
+There are three places to check before running the pipeline:
 
-1. SEMI-ISOTROPIC RESAMPLING
-ACDC is anisotropic, x and y can vary from from 1.3-1.7 but the slice thickness (z)
-is 5-8mm, if we would to an isotropic resamplic this would lead to a lot of artifacts. For this reason we only resample the xy to be 1.25x1.25
+- [config.py](/home/carlo/UT/deep_med/acdc/config.py): shared defaults for spacing, patch size, random seed, and environment-driven paths
+- `preprocessing_mode` in [config.py](/home/carlo/UT/deep_med/acdc/config.py): set this to `2d` or `2.5d`
+- [training_config.py](/home/carlo/UT/deep_med/acdc/training_config.py): training-specific settings such as `MODEL`, `EPOCHS`, `BATCH_SIZE`, `WANDB_ENABLED`, `OUTPUT`, and `MODEL_OUTPUT`
+- [test_config.py](/home/carlo/UT/deep_med/acdc/test_config.py): test-specific settings such as `MODEL`, `PREPROCESSING_MODE`, `MODEL_PATH`, and `OUTPUT`
 
-2. INTESITY NORMALIZATION (z-score per volume) 
-Because MRI don't have an absolute scale and depends on the settings of the machine
-we need to do intensity normalization. 
-Also give faster convergence for the model because ....
+Important notes:
 
-3. PADDING TO FIXED INPUT SIZE
-After slice extraction and in-plane resampling, tensors are padded to the configured
-`patch_size_2d` so the network sees a stable input size without applying foreground crop.
+- Keep `training_config.py` and the preprocessed dataset aligned. The training script checks that manifest settings match the current config.
+- `25DATTUNET` requires `PREPROCESSING_MODE=2.5d`
+- `UNET`, `ATTUNET`, and `SEGRESNET` require `PREPROCESSING_MODE=2d`
+- Before testing, update `MODEL_PATH` in [test_config.py](/home/carlo/UT/deep_med/acdc/test_config.py) so it points to the checkpoint you want to evaluate.
 
-- 4. DATA AUGMENTATION
+**Execution Order**
+Use the following order (inside active venv).
 
-TODO:
-- check 1.3-1.7mm
-- do we need to keep Orientationd in build_preprocess_transform function
-- complete ... in 2. INTENSITY NORMALIZATION
-- choose pad dimension based on desired input unet (SpatialPadD build_process_transform)
-- 4. AUGMENTATION motivation (should be realistic and happen in real life)
-- visualization
+1. Preprocess the dataset
 
+```bash
+python scripts/preprocess_dataset.py
+```
 
--Why 1.25x1.25?
--
+This reads the raw training dataset from `DATASET_PATH` and writes:
+
+- preprocessed samples to `PREPROCESSED_DATA_PATH/samples`
+- a manifest to `PREPROCESSED_DATA_PATH/manifest.json`
+
+2. Run preprocessing QC
+
+```bash
+python scripts/preprocess_qc.py
+```
+
+This samples slices from the raw training set, applies the same preprocessing and augmentation logic, and writes:
+
+- a JSON report to `PREPROCESS_QC_OUTPUT_JSON_2D`
+- figures to `PREPROCESS_QC_OUTPUT_FIGURES_2D`
+
+3. Train
+
+Before training, review [training_config.py](/home/carlo/UT/deep_med/acdc/training_config.py), especially:
+
+- `MODEL`
+- `EPOCHS`
+- `BATCH_SIZE`
+- `WANDB_ENABLED`
+- `MODEL_OUTPUT`
+
+Then run:
+
+```bash
+python scripts/training.py
+```
+
+By default this writes:
+
+- metrics to `artifacts/model_metrics/baseline_metrics_2d5.json`
+- checkpoint to `artifacts/models/baseline_model_2d5.pt`
+
+4. Test
+
+Before testing:
+
+- make sure `TEST_PATH` is set in `.env`
+- set `MODEL` in [test_config.py](/home/carlo/UT/deep_med/acdc/test_config.py) to match the trained checkpoint
+- set `PREPROCESSING_MODE` in [test_config.py](/home/carlo/UT/deep_med/acdc/test_config.py) so it matches the checkpoint architecture
+- set `MODEL_PATH` in [test_config.py](/home/carlo/UT/deep_med/acdc/test_config.py) to the checkpoint you want to evaluate
+
+Then run:
+
+```bash
+python scripts/test_model.py
+```
+
+By default this writes:
+
+- test metrics to `artifacts/model_metrics/test_metrics.json`
+
+**Minimal End-to-End Command List**
+```bash
+uv sync
+source .venv/bin/activate
+python scripts/preprocess_dataset.py
+python scripts/preprocess_qc.py
+python scripts/training.py
+python scripts/test_model.py
+```
