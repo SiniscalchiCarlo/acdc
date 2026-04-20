@@ -20,12 +20,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import training_config as cfg
+import config as cfg
 from src.load_data_2D import (
     build_loaders,
-    build_preprocessed_2d_list,
-    load_preprocessed_2d_manifest,
+    build_preprocessed_dataset_list,
+    load_preprocessed_manifest,
     split_by_patient,
+)
+from src.mode_compatibility import (
+    expected_input_channels_for_model,
+    infer_preprocessing_mode_from_manifest,
+    model_uses_triplet_slices,
+    validate_model_preprocessing_compatibility,
 )
 from src.transforms_2D import (
     build_preprocessed_train_transform,
@@ -176,6 +182,35 @@ def print_device_info(device: torch.device) -> None:
         print("CUDA available: False (running on CPU)")
 
 
+def print_training_run_summary(preprocessing_mode: str) -> None:
+    """Print the most important training configuration before heavy work starts."""
+    expected_channels = expected_input_channels_for_model(cfg.MODEL)
+    print("Training configuration:")
+    print(f"  model: {cfg.MODEL}")
+    print(f"  preprocessing_mode: {preprocessing_mode} (inferred from manifest)")
+    print(f"  expected_input_channels: {expected_channels}")
+    print(f"  preprocessed_root: {cfg.PREPROCESSED_ROOT}")
+    print(f"  patch_size: {cfg.PATCH_SIZE}")
+    print(f"  target_spacing: {cfg.TARGET_SPACING}")
+    print(f"  include_background_slices: {cfg.INCLUDE_BACKGROUND_SLICES}")
+    print(f"  min_label_pixels: {cfg.MIN_LABEL_PIXELS}")
+    print(f"  epochs: {cfg.EPOCHS}")
+    print(f"  batch_size: {cfg.BATCH_SIZE}")
+    print(f"  learning_rate: {cfg.LR}")
+    print(f"  weight_decay: {cfg.WEIGHT_DECAY}")
+    print(f"  loss_function: {cfg.LOSS_FUNCTION}")
+    print(f"  dynamic_class_weights: {cfg.DYNAMIC_CLASS_WEIGHTS}")
+    print(f"  num_workers: {cfg.NUM_WORKERS}")
+    print(f"  cache_rate_train: {cfg.CACHE_RATE_TRAIN}")
+    print(f"  cache_rate_val: {cfg.CACHE_RATE_VAL}")
+    print(f"  model_output: {cfg.MODEL_OUTPUT}")
+    print(f"  metrics_output: {cfg.OUTPUT}")
+    print(f"  wandb_enabled: {cfg.WANDB_ENABLED}")
+    if cfg.WANDB_ENABLED:
+        print(f"  wandb_project: {cfg.WANDB_PROJECT}")
+        print(f"  wandb_mode: {cfg.WANDB_MODE}")
+
+
 def get_model(config):
     model_name = config.MODEL
 
@@ -185,8 +220,10 @@ def get_model(config):
         return build_model_attention()
     elif model_name == 'SEGRESNET':
         return build_model_residual()
+    elif model_name == '25DATTUNET':
+        return build_model_attention25D()
     else:
-        available = ["UNET", "ATTUNET", "SEGRESNET"]
+        available = ["UNET", "ATTUNET", "SEGRESNET", "25DATTUNET"]
         raise ValueError(f"Invalid MODEL '{model_name}'. Choose from {available}")
 
 
@@ -213,6 +250,17 @@ def build_model_attention() -> AttentionUnet:
         strides=(2, 2, 2, 2),
     )
 
+def build_model_attention25D() -> AttentionUnet:
+    """Construct 2.5D Attention UNet."""
+    return AttentionUnet(
+        spatial_dims=2, # Still 2D UNet, treating each slice independently. Could experiment with 3D attention or stacking multiple slices as input channels in the future.
+        in_channels=3, # Stack 3 slices as input channels
+        out_channels=4,
+        channels=(16, 32, 64, 128, 256),
+        #channels=(32, 64, 128, 256, 512), # Try larger model? maybe not the best option
+        strides=(2, 2, 2, 2),
+    )
+
 
 def build_model_residual() -> SegResNet:
     """Construct top-end SegResNet."""
@@ -225,11 +273,16 @@ def build_model_residual() -> SegResNet:
         blocks_up=(1, 1, 1),
     )
 
-
 def build_post_transforms() -> tuple[Compose, Compose]:
-    """Build post-processing transforms for predictions and labels before Dice."""
-    post_pred = Compose([EnsureType(), AsDiscrete(argmax=True, to_onehot=4)])
-    post_label = Compose([EnsureType(), AsDiscrete(to_onehot=4)])
+    # Ensure background is included in one-hot for the DiceMetric
+    post_pred = Compose([
+        EnsureType(), 
+        AsDiscrete(argmax=True, to_onehot=4)
+    ])
+    post_label = Compose([
+        EnsureType(), 
+        AsDiscrete(to_onehot=4)
+    ])
     return post_pred, post_label
 
 
@@ -241,13 +294,17 @@ def compute_class_weights(val_dice_per_class: list[float], device: torch.device)
     so they sum to the number of foreground classes.
     """
     dice_scores = torch.tensor(val_dice_per_class, dtype=torch.float32)
+    
     # Clamp to avoid division by zero if Dice is 1.0
-    weights = 1.0 - dice_scores.clamp(0.0, 0.999)
+    weights = 1.0 - dice_scores.clamp(0.0, 0.9) 
     # Normalize so foreground weights sum to number of classes
-    weights = weights / weights.sum() * len(dice_scores)
-    # Prepend background weight of 1.0
-    background_weight = torch.ones(1, dtype=torch.float32)
+    weights = weights / (weights.sum() + 1e-6) * len(dice_scores)
+    
+    # FIX: Background weight should usually be slightly lower than 1.0 
+    # if you want to force focus on small structures like the Myocardium.
+    background_weight = torch.tensor([0.5], dtype=torch.float32) 
     return torch.cat([background_weight, weights], dim=0).to(device)
+
 
 # Try CenterlineDiceLoss or Inter-Slice Centroid Smoothness Loss? 
 # Problem with inter-slice smoothness = shuffle=True so random batches often do not contain many truly consecutive slices.
@@ -285,13 +342,14 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
     if not isinstance(saved_config, dict):
         raise RuntimeError("Malformed preprocessed manifest: missing 'config' section.")
 
+    mismatches: list[str] = []
     expected = {
         "target_spacing": list(cfg.TARGET_SPACING),
         "patch_size": list(cfg.PATCH_SIZE),
         "include_background_slices": cfg.INCLUDE_BACKGROUND_SLICES,
         "min_label_pixels": cfg.MIN_LABEL_PIXELS,
+        "triplet_slices": model_uses_triplet_slices(cfg.MODEL),
     }
-    mismatches: list[str] = []
     for key, expected_value in expected.items():
         actual_value = saved_config.get(key)
         if actual_value != expected_value:
@@ -300,7 +358,7 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
     if mismatches:
         details = "; ".join(mismatches)
         raise RuntimeError(
-            "Preprocessed dataset config does not match train_baseline_2d_config.py. "
+            "Preprocessed dataset config does not match config.py. "
             f"Regenerate the offline dataset or align the config. {details}"
         )
 
@@ -417,18 +475,21 @@ def main() -> None:
     """Train and validate a reproducible 2D baseline using config-only settings."""
     device = get_device()
     print_device_info(device)
+    if cfg.PREPROCESSED_ROOT is None:
+        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
+
+    manifest = load_preprocessed_manifest(cfg.PREPROCESSED_ROOT)
+    preprocessing_mode = infer_preprocessing_mode_from_manifest(manifest)
+    validate_model_preprocessing_compatibility(cfg.MODEL, preprocessing_mode)
+    validate_preprocessed_manifest(manifest)
+    print_training_run_summary(preprocessing_mode)
     wandb_run = init_wandb_run(cfg)
     torch.manual_seed(cfg.SEED)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(cfg.SEED)
         torch.cuda.reset_peak_memory_stats()
 
-    if cfg.PREPROCESSED_ROOT is None:
-        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
-
-    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-    validate_preprocessed_manifest(manifest)
-    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    items = build_preprocessed_dataset_list(cfg.PREPROCESSED_ROOT)
     train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
     train_transform = build_preprocessed_train_transform(
@@ -454,6 +515,19 @@ def main() -> None:
     )
 
     model = get_model(cfg).to(device)
+    # Guard: verify model input channels match the preprocessed data
+    _expected_in_channels = expected_input_channels_for_model(cfg.MODEL)
+    _sample = items[0]
+    _probe = np.load(_sample["sample"])
+    _actual_channels = _probe["image"].shape[0]
+    if _actual_channels != _expected_in_channels:
+        raise RuntimeError(
+            f"Model '{cfg.MODEL}' expects {_expected_in_channels} input channel(s), "
+            f"but preprocessed data has {_actual_channels}. "
+            "Check that PREPROCESSED_ROOT points to a dataset compatible with the selected model."
+        )
+    # END of GUARD
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.LR, weight_decay=cfg.WEIGHT_DECAY)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
@@ -483,7 +557,7 @@ def main() -> None:
     print(f"Device: {device}")
     print(f"Train slices: {len(train_items)} | Val slices: {len(val_items)}")
 
-    for epoch in range(1, cfg.EPOCHS + 1):
+    for epoch in tqdm(range(1, cfg.EPOCHS + 1), desc="Training", unit="epoch"):
         epochs_run = epoch
         epoch_start_time = time.perf_counter()
         if torch.cuda.is_available():

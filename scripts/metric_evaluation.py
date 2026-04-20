@@ -6,13 +6,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import training_config as cfg
-from training import get_device, get_model, validate
+import config as cfg
+from scripts.training import get_device, get_model, validate
 from src.load_data_2D import (
-    build_preprocessed_2d_list,
-    load_preprocessed_2d_manifest,
-    split_by_patient,
     build_loaders,
+    build_preprocessed_dataset_list,
+    load_preprocessed_manifest,
+    split_by_patient,
 )
 from src.transforms_2D import build_preprocessed_val_transform
 from monai.data import pad_list_data_collate
@@ -46,8 +46,8 @@ def evaluate_model(name: str, model_type: str, model_path: Path, device: torch.d
     cfg.MODEL = original_model
 
     # Load validation data
-    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
+    manifest = load_preprocessed_manifest(cfg.PREPROCESSED_ROOT)
+    items = build_preprocessed_dataset_list(cfg.PREPROCESSED_ROOT)
     _, val_items = split_by_patient(items, n_splits=cfg.N_SPLITS, fold=cfg.FOLD)
     val_transform = build_preprocessed_val_transform(patch_size=cfg.PATCH_SIZE)
     _, val_loader = build_loaders(

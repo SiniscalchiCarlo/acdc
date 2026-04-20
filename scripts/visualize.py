@@ -12,13 +12,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import training as cfg
-from training import get_device, get_model
+import config as cfg
+from scripts.training import get_device, get_model
 from src.load_data_2D import (
-    build_preprocessed_2d_list,
-    load_preprocessed_2d_manifest,
-    split_by_patient,
     build_loaders,
+    build_preprocessed_dataset_list,
+    load_preprocessed_manifest,
+    split_by_patient,
 )
 from src.transforms_2D import build_preprocessed_val_transform
 from monai.data import pad_list_data_collate
@@ -30,10 +30,10 @@ from monai.data import pad_list_data_collate
 NUM_IMAGES = 5
 
 # Path to the trained model checkpoint to load.
-MODEL_OUTPUT = Path("artifacts") / "models" / "Baseline_UNET.pt"
+MODEL_OUTPUT = Path("artifacts") / "models" / "ATTENUNET_2.5D.pt"
 
 # Directory where segmentation visualizations will be saved.
-OUTPUT_DIR = Path("artifacts") / "segmentation_visuals" / "baseline_unet"
+OUTPUT_DIR = Path("artifacts") / "segmentation_visuals" / "baseline_attenunet_2.5D"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # -----------------------------
@@ -48,6 +48,14 @@ CLASS_COLORS = {
 
 # Class names for the legend.
 CLASS_NAMES = {1: "RV", 2: "MYO", 3: "LV"}
+
+
+def select_visualization_slice(image: torch.Tensor) -> np.ndarray:
+    """Return the center channel for 2.5D inputs, or the array itself for 2D inputs."""
+    image_np = image.cpu().numpy()
+    if image_np.ndim == 3:
+        return image_np[image_np.shape[0] // 2]
+    return image_np
 
 
 def load_trained_model(model_path: Path, device: torch.device) -> torch.nn.Module:
@@ -72,14 +80,15 @@ def visualize_batch(
     batch_size = images.shape[0]
     for i in range(batch_size):
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        display_image = select_visualization_slice(images[i])
 
         # Original image
-        axes[0].imshow(images[i, 0].cpu().numpy(), cmap="gray")
+        axes[0].imshow(display_image, cmap="gray")
         axes[0].set_title("Input MRI")
         axes[0].axis("off")
 
         # Ground truth contours overlaid on the image
-        axes[1].imshow(images[i, 0].cpu().numpy(), cmap="gray")
+        axes[1].imshow(display_image, cmap="gray")
         gt = labels[i, 0].cpu().numpy().squeeze()
         for class_idx, color in CLASS_COLORS.items():
             mask = gt == class_idx
@@ -89,7 +98,7 @@ def visualize_batch(
         axes[1].axis("off")
 
         # Predicted contours overlaid on the image
-        axes[2].imshow(images[i, 0].cpu().numpy(), cmap="gray")
+        axes[2].imshow(display_image, cmap="gray")
         pred = preds[i].cpu().numpy().squeeze()
         for class_idx, color in CLASS_COLORS.items():
             mask = pred == class_idx
@@ -116,9 +125,9 @@ def main() -> None:
     model = load_trained_model(MODEL_OUTPUT, device)
 
     # Load preprocessed validation data
-    manifest = load_preprocessed_2d_manifest(cfg.PREPROCESSED_ROOT)
-    items = build_preprocessed_2d_list(cfg.PREPROCESSED_ROOT)
-    _, val_items = split_by_patient(items, n_splits=cfg.N_SPLITS, fold=cfg.FOLD)
+    manifest = load_preprocessed_manifest(cfg.PREPROCESSED_ROOT)
+    items = build_preprocessed_dataset_list(cfg.PREPROCESSED_ROOT)
+    _, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
     val_transform = build_preprocessed_val_transform(patch_size=cfg.PATCH_SIZE)
     _, val_loader = build_loaders(
@@ -147,6 +156,10 @@ def main() -> None:
             logits = model(images)
             preds = torch.stack([post_pred(x) for x in
                                  torch.unbind(logits, dim=0)])
+            remaining = NUM_IMAGES - images_shown
+            images = images[:remaining]
+            labels = labels[:remaining]
+            preds = preds[:remaining]
             visualize_batch(images, labels, preds, batch_idx, OUTPUT_DIR)
             images_shown += images.shape[0]
 

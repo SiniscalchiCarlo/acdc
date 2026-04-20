@@ -1,5 +1,5 @@
 """
-Very simple QC script for the 2D preprocessing.
+Very simple QC script for the slice preprocessing.
 
 It checks a small set of slices, saves a few figures, and writes a tiny JSON
 report with only the information you usually look at first.
@@ -21,23 +21,27 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config import (
-    patch_size_2d,
-    preprocess_qc_limit_2d,
-    preprocess_qc_output_figures_2d,
-    preprocess_qc_output_json_2d,
-    seed_2d,
-    target_spacing_2d,
+    PATCH_SIZE,
+    PREPROCESSING_MODE,
+    PREPROCESS_QC_LIMIT_2D,
+    PREPROCESS_QC_OUTPUT_FIGURES_2D,
+    PREPROCESS_QC_OUTPUT_JSON_2D,
+    SEED,
+    TARGET_SPACING,
 )
 from src.load_data_2D import build_acdc_list
 from src.transforms_2D import build_preprocessed_augment_transform, build_preprocessing_transform
 
-LIMIT = preprocess_qc_limit_2d
-SEED = seed_2d
-TARGET_SPACING = target_spacing_2d
-PATCH_SIZE = patch_size_2d
+LIMIT = PREPROCESS_QC_LIMIT_2D
+OUTPUT_JSON = Path(PREPROCESS_QC_OUTPUT_JSON_2D)
+OUTPUT_FIGURES = Path(PREPROCESS_QC_OUTPUT_FIGURES_2D)
 
-OUTPUT_JSON = Path(preprocess_qc_output_json_2d)
-OUTPUT_FIGURES = Path(preprocess_qc_output_figures_2d)
+
+def select_visualization_slice(image: np.ndarray) -> np.ndarray:
+    """Return the center channel for 2.5D inputs, or the array itself for 2D inputs."""
+    if image.ndim == 3:
+        return image[image.shape[0] // 2]
+    return image
 
 
 def save_figure(
@@ -88,6 +92,7 @@ def main() -> None:
     preprocess_transform = build_preprocessing_transform(
         target_spacing=TARGET_SPACING,
         patch_size=PATCH_SIZE,
+        preprocessing_mode=PREPROCESSING_MODE,
     )
     augment_transform = build_preprocessed_augment_transform(
         patch_size=PATCH_SIZE,
@@ -119,9 +124,9 @@ def main() -> None:
 
         raw_image = raw_image_volume[..., slice_idx]
         raw_label = raw_label_volume[..., slice_idx]
-        processed_image = np.asarray(processed["image"])[0]
+        processed_image = select_visualization_slice(np.asarray(processed["image"]))
         processed_label = np.asarray(processed["label"])[0]
-        aug_image = np.asarray(augmented["image"])[0]
+        aug_image = select_visualization_slice(np.asarray(augmented["image"]))
         aug_label = np.asarray(augmented["label"])[0]
 
         case_warnings: list[str] = []

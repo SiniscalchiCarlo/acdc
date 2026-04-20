@@ -11,7 +11,7 @@ from monai.data import CacheDataset, DataLoader
 from monai.utils import set_determinism
 from sklearn.model_selection import GroupShuffleSplit
 
-from config import dataset_path
+from config import DATASET_PATH
 
 
 def parse_info_cfg(info_path: Path):
@@ -46,6 +46,7 @@ def split_by_patient(
 
 
 def build_acdc_list(
+    dataset_root: str | Path | None = None,
     include_background_slices: bool = True,
     min_label_pixels: int = 1,
 ) -> list[dict[str, Any]]:
@@ -56,7 +57,7 @@ def build_acdc_list(
     still happen by patient because the patient id is attached to every slice.
     """
 
-    root = Path(dataset_path)
+    root = Path(DATASET_PATH if dataset_root is None else dataset_root)
     patients = sorted([p for p in root.iterdir() if p.is_dir() and p.name.startswith("patient")])
 
     items: list[dict[str, Any]] = []
@@ -80,11 +81,11 @@ def build_acdc_list(
     return items
 
 
-def build_preprocessed_2d_list(
+def build_preprocessed_dataset_list(
     preprocessed_root: str | Path,
 ) -> list[dict[str, Any]]:
-    """Load a preprocessed 2D dataset manifest from disk."""
-    manifest = load_preprocessed_2d_manifest(preprocessed_root=preprocessed_root)
+    """Load a preprocessed slice dataset manifest from disk."""
+    manifest = load_preprocessed_manifest(preprocessed_root=preprocessed_root)
     items = manifest.get("items", [])
     if not items:
         raise RuntimeError(f"No items found in preprocessed manifest: {Path(preprocessed_root) / 'manifest.json'}")
@@ -101,7 +102,7 @@ def build_preprocessed_2d_list(
     return normalized_items
 
 
-def load_preprocessed_2d_manifest(
+def load_preprocessed_manifest(
     preprocessed_root: str | Path,
 ) -> dict[str, Any]:
     """Load and return the full preprocessed manifest, including stored config."""
