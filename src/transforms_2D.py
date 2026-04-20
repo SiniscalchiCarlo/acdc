@@ -25,12 +25,11 @@ from monai.transforms import (
     Transform,
 )
 
-from config import patch_size_2d, preprocessing_mode as default_preprocessing_mode, target_spacing_2d
-from src.pipeline import preprocessing_mode_uses_triplet_slices
+from config import PATCH_SIZE, PREPROCESSING_MODE as DEFAULT_PREPROCESSING_MODE, TARGET_SPACING
+from src.mode_compatibility import preprocessing_mode_uses_triplet_slices
 
-DEFAULT_TARGET_SPACING_2D = target_spacing_2d
-DEFAULT_PATCH_SIZE_2D = patch_size_2d
-DEFAULT_PREPROCESSING_MODE = default_preprocessing_mode
+DEFAULT_TARGET_SPACING_2D = TARGET_SPACING
+DEFAULT_PATCH_SIZE_2D = PATCH_SIZE
 
 class ExtractSliceTripletd(MapTransform):
     """Extract 3 consecutive slices: [idx-1, idx, idx+1].

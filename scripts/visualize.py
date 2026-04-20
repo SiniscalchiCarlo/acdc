@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import training_config as cfg
-from training import get_device, get_model
+import config as cfg
+from scripts.training import get_device, get_model
 from src.load_data_2D import (
     build_loaders,
     build_preprocessed_dataset_list,

@@ -13,10 +13,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import test_config as cfg
+import config as cfg
 from scripts.training import CLASS_NAMES, get_device, get_model, print_device_info, validate
 from src.load_data_2D import build_acdc_list, build_loaders
-from src.pipeline import expected_input_channels_for_model, validate_model_preprocessing_compatibility
+from src.mode_compatibility import expected_input_channels_for_model, validate_model_preprocessing_compatibility
 from src.transforms_2D import build_preprocessing_transform
 
 
@@ -43,7 +43,7 @@ def assert_input_channels_match(model: torch.nn.Module) -> None:
         raise RuntimeError(
             f"Model '{cfg.MODEL}' expects {expected_in_channels} input channel(s), "
             f"but the constructed network exposes {actual_in_channels}. "
-            "Check MODEL in test_config.py."
+            "Check MODEL in config.py."
         )
 
 
@@ -93,12 +93,12 @@ def main() -> None:
         val_items=test_items,
         train_transform=test_transform,
         val_transform=test_transform,
-        batch_size=cfg.BATCH_SIZE,
-        num_workers=cfg.NUM_WORKERS,
+        batch_size=cfg.TEST_BATCH_SIZE,
+        num_workers=cfg.TEST_NUM_WORKERS,
         cache_rate_train=0.0,
-        cache_rate_val=cfg.CACHE_RATE_VAL,
+        cache_rate_val=cfg.TEST_CACHE_RATE_VAL,
         seed=cfg.SEED,
-        pin_memory=cfg.PIN_MEMORY,
+        pin_memory=cfg.TEST_PIN_MEMORY,
         collate_fn=pad_list_data_collate,
     )
 
@@ -114,7 +114,7 @@ def main() -> None:
         loader=val_loader,
         loss_fn=loss_fn,
         device=device,
-        max_batches=cfg.MAX_VAL_BATCHES,
+        max_batches=cfg.TEST_MAX_VAL_BATCHES,
     )
 
     summary = {
@@ -130,13 +130,13 @@ def main() -> None:
         "class_names": list(CLASS_NAMES),
     }
 
-    cfg.OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    cfg.OUTPUT.write_text(json.dumps(summary, indent=2))
+    cfg.TEST_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    cfg.TEST_OUTPUT.write_text(json.dumps(summary, indent=2))
 
     print(f"Tested model: {model_path}")
     print(f"Test Dice: {summary['test_dice']:.4f}")
     print(f"Test HD95: {summary['test_hd95']:.4f}")
-    print(f"Saved test metrics to: {cfg.OUTPUT}")
+    print(f"Saved test metrics to: {cfg.TEST_OUTPUT}")
 
 
 if __name__ == "__main__":

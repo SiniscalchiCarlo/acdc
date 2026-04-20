@@ -11,7 +11,7 @@ from monai.data import CacheDataset, DataLoader
 from monai.utils import set_determinism
 from sklearn.model_selection import GroupShuffleSplit
 
-from config import dataset_path
+from config import DATASET_PATH
 
 
 def parse_info_cfg(info_path: Path):
@@ -57,7 +57,7 @@ def build_acdc_list(
     still happen by patient because the patient id is attached to every slice.
     """
 
-    root = Path(dataset_path if dataset_root is None else dataset_root)
+    root = Path(DATASET_PATH if dataset_root is None else dataset_root)
     patients = sorted([p for p in root.iterdir() if p.is_dir() and p.name.startswith("patient")])
 
     items: list[dict[str, Any]] = []

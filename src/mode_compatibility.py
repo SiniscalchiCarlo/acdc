@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 MULTICHANNEL_MODELS = {"25DATTUNET"}
 VALID_PREPROCESSING_MODES = {"2d", "2.5d"}
 

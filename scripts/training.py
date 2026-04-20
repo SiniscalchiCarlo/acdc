@@ -20,14 +20,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import training_config as cfg
+import config as cfg
 from src.load_data_2D import (
     build_loaders,
     build_preprocessed_dataset_list,
     load_preprocessed_manifest,
     split_by_patient,
 )
-from src.pipeline import (
+from src.mode_compatibility import (
     expected_input_channels_for_model,
     infer_preprocessing_mode_from_manifest,
     model_uses_triplet_slices,
@@ -358,7 +358,7 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
     if mismatches:
         details = "; ".join(mismatches)
         raise RuntimeError(
-            "Preprocessed dataset config does not match training_config.py. "
+            "Preprocessed dataset config does not match config.py. "
             f"Regenerate the offline dataset or align the config. {details}"
         )
 

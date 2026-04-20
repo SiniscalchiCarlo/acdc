@@ -13,22 +13,16 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from config import (
-    include_background_slices_2d,
-    min_label_pixels_2d,
-    patch_size_2d,
-    preprocessing_mode,
-    preprocessed_data_path,
-    target_spacing_2d,
+    INCLUDE_BACKGROUND_SLICES,
+    MIN_LABEL_PIXELS,
+    PATCH_SIZE,
+    PREPROCESSING_MODE,
+    PREPROCESSED_DATA_PATH,
+    TARGET_SPACING,
 )
 from src.load_data_2D import build_acdc_list
-from src.pipeline import preprocessing_mode_uses_triplet_slices
+from src.mode_compatibility import preprocessing_mode_uses_triplet_slices
 from src.transforms_2D import build_preprocessing_transform
-
-TARGET_SPACING = target_spacing_2d
-PATCH_SIZE = patch_size_2d
-INCLUDE_BACKGROUND_SLICES = include_background_slices_2d
-MIN_LABEL_PIXELS = min_label_pixels_2d
-PREPROCESSING_MODE = preprocessing_mode
 
 
 def main() -> None:
@@ -43,7 +37,7 @@ def main() -> None:
         preprocessing_mode=PREPROCESSING_MODE,
     )
 
-    output_dir = Path(preprocessed_data_path)
+    output_dir = Path(PREPROCESSED_DATA_PATH)
     samples_dir = output_dir / "samples"
     samples_dir.mkdir(parents=True, exist_ok=True)
 
