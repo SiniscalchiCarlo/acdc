@@ -14,9 +14,7 @@ The pipeline has four steps:
 
 **Configuration**
 
-There is one user-facing config file:
-
-- [config.py](/home/carlo/Download/acdc/config.py:1)
+There is one user-facing config file: config.py
 
 The top of `config.py` contains the most important parameters to run the scripts:
 
@@ -73,7 +71,9 @@ The compatibility check is enforced in [src/mode_compatibility.py](/home/carlo/D
 - [scripts/preprocess_dataset.py](/home/carlo/Download/acdc/scripts/preprocess_dataset.py:1): offline preprocessing
 - [scripts/preprocess_qc.py](/home/carlo/Download/acdc/scripts/preprocess_qc.py:1): preprocessing QC
 - [scripts/training.py](/home/carlo/Download/acdc/scripts/training.py:1): training entrypoint
+- [scripts/optuna_training.py](/home/carlo/Download/acdc/scripts/optuna_training.py:1): Optuna hyperparameter search entrypoint
 - [scripts/test_model.py](/home/carlo/Download/acdc/scripts/test_model.py:1): checkpoint evaluation entrypoint
+
 
 **Setup**
 
@@ -138,3 +138,13 @@ python scripts/preprocess_qc.py
 python scripts/training.py
 python scripts/test_model.py
 ```
+
+**Optuna Hyperparameter Search**
+
+To run the Optuna search script, first preprocess the dataset for the active mode and then run:
+
+```bash
+python scripts/optuna_training.py
+```
+
+Optuna tunes the learning rate, weight decay, mini-batch size, and the relative weighting of the Dice and cross-entropy terms in the combined loss.
