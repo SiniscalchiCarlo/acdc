@@ -26,7 +26,7 @@ MODE_TAG = MODE_TAG_BY_PIPELINE[PIPELINE_MODE]
 
 # Main architecture used by train/test by default.
 # Options: 'UNET' | 'ATTUNET' | 'SEGRESNET' | '25DATTUNET'
-MODEL = 'UNET' 
+MODEL = '25DATTUNET' 
 
 # Raw dataset locations. You need to setup them in .env
 DATASET_PATH = os.getenv("DATASET_PATH")

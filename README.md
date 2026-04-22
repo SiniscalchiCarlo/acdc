@@ -115,8 +115,8 @@ So if you want to run two experiments, both using UNET, one 2D and the otherone 
 
 1. For UNET on 2d
 
-- In config.py:16, set PIPELINE_MODE = "2d"
-- In config.py:29, set MODEL = "UNET"
+- set PIPELINE_MODE = "2d"
+- set MODEL = "UNET"
 - Run:
 
 ```bash
@@ -128,8 +128,8 @@ python scripts/test_model.py
 
 2. For 2.5d
 
-- In config.py:16, set PIPELINE_MODE = "2.5d"
-- In config.py:29, set MODEL = "25DATTUNET"
+- set PIPELINE_MODE = "2.5d"
+- set MODEL = "25DATTUNET"
 - Run again:
 
 ```bash

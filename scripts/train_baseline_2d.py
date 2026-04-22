@@ -25,12 +25,16 @@ from src.load_data_2D import (
     load_preprocessed_manifest,
     split_by_patient,
 )
+from src.mode_compatibility import infer_preprocessing_mode_from_manifest
 from src.transforms_2D import (
     build_preprocessed_train_transform,
     build_preprocessed_val_transform,
 )
 
 CLASS_NAMES = ("rv", "myo", "lv")
+BASELINE_PREPROCESSED_ROOT = Path("artifacts/preprocessed_2d")
+BASELINE_MODEL_OUTPUT = Path("artifacts/models/baseline_model_2d.pt")
+BASELINE_OUTPUT = Path("artifacts") / "model_metrics" / "baseline_metrics_2d.json"
 
 
 def get_device() -> torch.device:
@@ -117,6 +121,17 @@ def validate_preprocessed_manifest(manifest: dict[str, object]) -> None:
         raise RuntimeError(
             "Preprocessed dataset config does not match config.py. "
             f"Regenerate the offline dataset or align the config. {details}"
+        )
+
+
+def validate_baseline_preprocessed_root(manifest: dict[str, object], preprocessed_root: Path) -> None:
+    """Baseline training only supports the single-slice 2D offline dataset."""
+    saved_mode = infer_preprocessing_mode_from_manifest(manifest)
+    if saved_mode != "2d":
+        raise RuntimeError(
+            f"{preprocessed_root} contains '{saved_mode}' preprocessed data, "
+            "but scripts/train_baseline_2d.py only supports the 2D dataset at "
+            "artifacts/preprocessed_2d."
         )
 
 
@@ -234,12 +249,14 @@ def main() -> None:
         torch.cuda.manual_seed_all(cfg.SEED)
         torch.cuda.reset_peak_memory_stats()
 
-    if cfg.PREPROCESSED_ROOT is None:
-        raise RuntimeError("PREPROCESSED_ROOT must point to a generated preprocessed 2D dataset.")
+    preprocessed_root = BASELINE_PREPROCESSED_ROOT
+    model_output = BASELINE_MODEL_OUTPUT
+    metrics_output = BASELINE_OUTPUT
 
-    manifest = load_preprocessed_manifest(cfg.PREPROCESSED_ROOT)
+    manifest = load_preprocessed_manifest(preprocessed_root)
     validate_preprocessed_manifest(manifest)
-    items = build_preprocessed_dataset_list(cfg.PREPROCESSED_ROOT)
+    validate_baseline_preprocessed_root(manifest, preprocessed_root)
+    items = build_preprocessed_dataset_list(preprocessed_root)
     train_items, val_items = split_by_patient(items, val_size=cfg.VAL_SIZE, seed=cfg.SEED)
 
     train_transform = build_preprocessed_train_transform(
@@ -284,6 +301,7 @@ def main() -> None:
     epochs_run = 0
 
     print(f"Device: {device}")
+    print(f"Preprocessed root: {preprocessed_root}")
     print(f"Train slices: {len(train_items)} | Val slices: {len(val_items)}")
 
     for epoch in range(1, cfg.EPOCHS + 1):
@@ -359,7 +377,7 @@ def main() -> None:
         optimizer=optimizer,
         epoch=epochs_run,
         metrics={} if best_metrics is None else best_metrics,
-        model_path=cfg.MODEL_OUTPUT,
+        model_path=model_output,
     )
 
     summary = {
@@ -376,14 +394,14 @@ def main() -> None:
         "best_epoch_duration_sec": best_epoch_duration_sec,
         "best_epoch_train_samples_per_sec": best_epoch_throughput,
         "best_epoch_max_gpu_memory_mb": best_epoch_gpu_memory_mb,
-        "model_path": str(cfg.MODEL_OUTPUT),
-        "preprocessed_root": str(cfg.PREPROCESSED_ROOT),
+        "model_path": str(model_output),
+        "preprocessed_root": str(preprocessed_root),
     }
 
-    cfg.OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    cfg.OUTPUT.write_text(json.dumps(summary, indent=2))
-    print(f"Saved metrics to: {cfg.OUTPUT}")
-    print(f"Saved final model to: {cfg.MODEL_OUTPUT}")
+    metrics_output.parent.mkdir(parents=True, exist_ok=True)
+    metrics_output.write_text(json.dumps(summary, indent=2))
+    print(f"Saved metrics to: {metrics_output}")
+    print(f"Saved final model to: {model_output}")
 
 
 if __name__ == "__main__":
