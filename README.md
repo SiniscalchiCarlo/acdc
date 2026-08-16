@@ -5,6 +5,15 @@ This repository contains a MONAI-based cardiac MRI segmentation workflow for the
 - `2d`: one slice per sample
 - `2.5d`: previous, center, and next slice stacked as 3 channels
 
+**Results**
+
+- LV Dice: 0.93
+- RV Dice: 0.89
+- MYO Dice: 0.87
+- Mean HD95: 3.25 mm
+
+The final model is a 2.5D Attention U-Net using three adjacent slices as input, dynamic class weighting, Dice–Cross Entropy loss, and Optuna hyperparameter optimization. Experiments compared U-Net, Attention U-Net, SegResNet, and 2.5D Attention U-Net variants.
+
 The pipeline has four steps:
 
 1. preprocess the raw training dataset into offline slice files
@@ -63,16 +72,16 @@ Current default mapping:
 - `UNET`, `ATTUNET`, and `SEGRESNET` require `2d`
 - `25DATTUNET` requires `2.5d`
 
-The compatibility check is enforced in [src/mode_compatibility.py](/home/carlo/Download/acdc/src/mode_compatibility.py:1) and validated again at training time against the saved preprocess manifest.
+The compatibility check is enforced in [src/mode_compatibility.py](src/mode_compatibility.py) and validated again at training time against the saved preprocess manifest.
 
 **Repository Layout**
 
-- [config.py](/home/carlo/Download/acdc/config.py:1): single user-facing config for mode, data, train, test, outputs, logging, and QC
-- [scripts/preprocess_dataset.py](/home/carlo/Download/acdc/scripts/preprocess_dataset.py:1): offline preprocessing
-- [scripts/preprocess_qc.py](/home/carlo/Download/acdc/scripts/preprocess_qc.py:1): preprocessing QC
-- [scripts/training.py](/home/carlo/Download/acdc/scripts/training.py:1): training entrypoint
-- [scripts/optuna_training.py](/home/carlo/Download/acdc/scripts/optuna_training.py:1): Optuna hyperparameter search entrypoint
-- [scripts/test_model.py](/home/carlo/Download/acdc/scripts/test_model.py:1): checkpoint evaluation entrypoint
+- [config.py](config.py): single user-facing config for mode, data, train, test, outputs, logging, and QC
+- [scripts/preprocess_dataset.py](scripts/preprocess_dataset.py): offline preprocessing
+- [scripts/preprocess_qc.py](scripts/preprocess_qc.py): preprocessing QC
+- [scripts/training.py](scripts/training.py): training entrypoint
+- [scripts/optuna_training.py](scripts/optuna_training.py): Optuna hyperparameter search entrypoint
+- [scripts/test_model.py](scripts/test_model.py): checkpoint evaluation entrypoint
 
 
 **Setup**
@@ -107,13 +116,13 @@ What each variable does:
 - `DATASET_PATH`: raw training set used by preprocessing and QC
 - `TEST_PATH`: raw test set used by `scripts/test_model.py`
 
-All generated paths such as preprocessed data, checkpoints, metrics, and QC outputs are defined in [config.py](/home/carlo/Download/acdc/config.py:1), not in `.env`.
+All generated paths such as preprocessed data, checkpoints, metrics, and QC outputs are defined in [config.py](config.py), not in `.env`.
 
 
 **Example**
-So if you want to run two experiments, both using UNET, one 2D and the otherone 2.5D you have to:
+To run two experiments, one using UNET in 2D and one using 25DATTUNET in 2.5D:
 
-1. For UNET on 2d
+1. For UNET in 2D
 
 - set PIPELINE_MODE = "2d"
 - set MODEL = "UNET"
@@ -126,11 +135,11 @@ python scripts/training.py
 python scripts/test_model.py
 ```
 
-2. For 2.5d
+2. For 2.5D
 
 - set PIPELINE_MODE = "2.5d"
 - set MODEL = "25DATTUNET"
-- Run again:
+- Run the same commands again:
 
 ```bash
 python scripts/preprocess_dataset.py
