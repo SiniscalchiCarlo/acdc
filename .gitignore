@@ -1,17 +1,39 @@
-# Python-generated files
+# Python-generated files and caches
 __pycache__/
-*.py[oc]
+*.py[cod]
+*$py.class
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
 
-# Virtual environments
-.venv
+# Local environments and configuration
+.venv/
+venv/
+env/
+ENV/
 .env
-
+.env.*
+!.env.example
 AGENTS.md
 HANDOFF.md
 config_local.py
 
+# Generated experiment data and model outputs
 artifacts/
+wandb/
+optuna.db
+*.sqlite
+*.sqlite3
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
